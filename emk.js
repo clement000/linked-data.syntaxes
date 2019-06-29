@@ -50,6 +50,10 @@ const G_SYNTAXES = {
 		supplementals: {},
 		dependencies: G_SYNTAX_DEPS.terse,
 	},
+	'sparql-generate': {
+		supplementals: {},
+		dependencies: G_SYNTAX_DEPS.terse,
+	},
 	notation3: {
 		supplementals: {},
 		dependencies: G_SYNTAX_DEPS.terse,
@@ -65,8 +69,8 @@ const G_SYNTAXES = {
 };
 
 const A_COLOR_SCHEMES = [
-	'macaron-dark',
 	'macaron-light',
+	'macaron-dark',
 ];
 
 module.exports = {
