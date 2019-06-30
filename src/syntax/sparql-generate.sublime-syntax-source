@@ -7,6 +7,7 @@ scope: source.rqg
 _extends: sparql.sublime-syntax-source
 
 variables:
+ 
 
   closeBrace_LOOKAHEAD: '(?=})'
   closeParen_LOOKAHEAD: '(?=\))'
@@ -14,7 +15,7 @@ variables:
   # query lookaheads
   generateQuery_LOOKAHEAD: '(?i)(?=generate{{KEYWORD_BOUNDARY}})'
   templateQuery_LOOKAHEAD: '(?i)(?=template{{KEYWORD_BOUNDARY}})'
-  query2_LOOKAHEAD: >-
+  query_LOOKAHEAD: >-
     (?x)(?=
       {{selectQuery_LOOKAHEAD}}
       |{{generateQuery_LOOKAHEAD}}
@@ -34,7 +35,7 @@ variables:
     )
   accept_LOOKAHEAD: '(?i)(?=accept{{KEYWORD_BOUNDARY}})'
 
-
+ 
   where_LOOKAHEAD: '(?i)(?=where{{KEYWORD_BOUNDARY}})'
 
   uri_LOOKAHEAD: '(?i)(?=uri{{KEYWORD_BOUNDARY}})'
@@ -48,12 +49,36 @@ variables:
   format_LOOKAHEAD: '(?i)(?=format{{KEYWORD_BOUNDARY}})'
   group_LOOKAHEAD: '(?i)(?=group{{KEYWORD_BOUNDARY}})'
 
+  START_XEXPR_LOOKAHEAD: '(?=($|?){)'
+  START_XEXPR: '(?:[$?]\{)'
+
+  ECHAR: '(?:\\[tbnrf"''\\\{\}])'
+  OPEN_EXPR:  '(?:\{)'
+  CLOSE_EXPR: '(?:\})'
+
+  STRING_SHORT_SINGLE: '[^\x{27}\x{5C}\x{0A}\x{0D}\{]'
+  STRING_SHORT_DOUBLE: '[^\x{22}\x{5C}\x{0A}\x{0D}\{]'
+  ECHAR_SINGLE: '(?:\\[tbnrf''\\\{\}])'
+  ECHAR_DOUBLE: '(?:\\[tbnrf"\\\{\}])'
+
 contexts:
+
+  # main:
+  #   - match: '{{PLA_anything}}'
+  #     set:
+  #       - EOF
+  #       - graphNode # test_context_here
+
+  # EOF:
+  #   - match: '{{MAT_word_or_any_one_char}}'
+  #     scope: invalid.illegal.token.expected.stringLiteralShortDouble.test
+  #     pop: true
+
 
   openBrace:
     - _open_brace: definition.open-brace
       pop: true
-    - _throw: true
+    - _throw: triplesSameSubject
 
   closeBrace:
     - _close_brace: definition.close-brace
@@ -96,7 +121,7 @@ contexts:
         3: meta.directive.prologue.rq
         4: meta.whitespace.rq
       set: [unit_AFTER_PROLOGUE, line_comment]
-    - match: '{{query2_LOOKAHEAD}}'
+    - match: '{{query_LOOKAHEAD}}'
       set: [valuesClause, query_AFTER_PROLOGUE]
     - match: '{{functionQuery_LOOKAHEAD}}'
       set: function_AFTER_PROLOGUE
@@ -194,7 +219,7 @@ contexts:
     - match: '{{PLA_anything}}'
       set:
         - argList
-        - varOrNamedNode
+        - varOrXIri
 
   uriQueryCall:
     - meta_content_scope: meta.query-name.rq
@@ -392,18 +417,6 @@ contexts:
       set: expression
     - _throw: true
 
-  primaryExpressionNotBracketted:
-    - match: '{{namedNodeFunction_LOOKAHEAD}}'
-      set: functionCall
-    - match: '{{var_LOOKAHEAD}}'
-      set: var
-    - include: builtInCall
-    - include: literal
-    - _namedNode:
-        scope: expression
-        pop: true
-    - _throw: true
-
   subTemplateQuery:
     - _case: template
       scope: keyword.operator.word.modifier.template.rqg 
@@ -500,7 +513,7 @@ contexts:
         - bindingClauses
         - datasetClause
         - functionName
-    - _throw: true
+    - _throw: true 
 
   functionName:
     - meta_content_scope: meta.query-name.rq
@@ -579,7 +592,7 @@ contexts:
     - _case: source
       type: modifier
       scope: keyword.operator.word.source.bindings.rq
-      push: [bindingClauses, source_AFTER_NODE, varOrNamedNode]
+      push: [bindingClauses, source_AFTER_NODE, varOrXIri]
     - _case: bind
       type: modifier
       scope: keyword.operator.word.bind.bindings.rq
@@ -608,3 +621,356 @@ contexts:
       scope: storage.type.variable.as.iterator.rq
       set: var
     - _throw: true
+
+
+  xstringLiteralShortDouble:
+    - meta_include_prototype: false
+    - meta_scope: string.quoted.double.literal.short.SYNTAX
+    - match: '\{'
+      scope: punctuation.definition.string.expression.literal.double.short.SYNTAX
+      set: 
+        - xstringLiteralShortDouble_AFTER_EXPRESSION
+        - expression
+    - include: stringLiteralShortDouble
+
+  xstringLiteralShortDouble_AFTER_EXPRESSION:
+    - match: '\}'
+      scope: punctuation.definition.string.expression.literal.double.short.SYNTAX
+      set: xstringLiteralShortDouble
+    - _throw: true
+
+  xstringLiteralShortSingle:
+    - meta_include_prototype: false
+    - meta_scope: string.quoted.single.literal.short.SYNTAX
+    - match: '\{'
+      scope: punctuation.definition.string.expression.literal.single.short.SYNTAX
+      set: 
+        - xstringLiteralShortSingle_AFTER_EXPRESSION
+        - expression
+    - include: stringLiteralShortSingle
+
+  xstringLiteralShortSingle_AFTER_EXPRESSION:
+    - match: '\}'
+      scope: punctuation.definition.string.expression.literal.single.short.SYNTAX
+      set: xstringLiteralShortSingle
+    - _throw: true
+
+  xstringLiteralLongDouble:
+    - meta_include_prototype: false
+    - match: '\{'
+      scope: punctuation.definition.string.expression.literal.double.long.SYNTAX
+      set: 
+        - xstringLiteralLongDouble_AFTER_EXPRESSION
+        - expression
+    - include: xstringLiteralLongDouble_AFTER_INNER_QUOTE
+    - match: '"""'
+      scope: punctuation.definition.string.end.literal.double.long.SYNTAX
+      pop: true
+    - match: '""?'
+      scope: string.quoted.double.literal.long.SYNTAX
+    - _throw: true
+
+  xstringLiteralLongDouble_AFTER_INNER_QUOTE:
+    - match: '[^"\\]'
+      scope: string.quoted.double.literal.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - match: '{{ECHAR_DOUBLE}}'
+      scope: string.quoted.double.literal.long.SYNTAX constant.character.escape.literal.escape.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - match: '\\'''
+      scope: string.quoted.double.literal.long.SYNTAX constant.character.escape.literal.escape.pointless.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - match: '{{UCHAR}}'
+      scope: string.quoted.double.literal.long.SYNTAX constant.character.escape.literal.unicode.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - match: '\\.'
+      scope: string.quoted.double.literal.long.SYNTAX invalid.illegal.escape.SYNTAX
+      pop: true
+
+  xstringLiteralLongDouble_AFTER_EXPRESSION:
+    - match: '\}'
+      scope: punctuation.definition.string.expression.literal.double.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - _throw: true
+
+
+  xstringLiteralLongSingle:
+    - meta_include_prototype: false
+    - match: '\{'
+      scope: punctuation.definition.string.expression.literal.single.long.SYNTAX
+      set: 
+        - xstringLiteralLongSingle_AFTER_EXPRESSION
+        - expression
+    - include: xstringLiteralLongSingle_AFTER_INNER_QUOTE
+    - match: ''''''''
+      scope: punctuation.definition.string.end.literal.single.long.SYNTAX
+      pop: true
+    - match: '''''?'
+      scope: string.quoted.single.literal.long.SYNTAX
+    - _throw: true
+
+  xstringLiteralLongSingle_AFTER_INNER_QUOTE:
+    - match: '[^''\\]'
+      scope: string.quoted.single.literal.long.SYNTAX
+      set: xstringLiteralLongSingle
+    - match: '{{ECHAR_SINGLE}}'
+      scope: string.quoted.single.literal.long.SYNTAX constant.character.escape.literal.escape.single.SYNTAX
+      set: xstringLiteralLongSingle
+    - match: '\\"'
+      scope: string.quoted.single.literal.long.SYNTAX constant.character.escape.literal.escape.pointless.single.SYNTAX
+      set: xstringLiteralLongSingle
+    - match: '{{UCHAR}}'
+      scope: string.quoted.single.literal.long.SYNTAX constant.character.escape.literal.unicode.single.SYNTAX
+      set: xstringLiteralLongSingle
+    - match: '\\.'
+      scope: string.quoted.double.literal.long.SYNTAX invalid.illegal.escape.SYNTAX
+      pop: true
+
+  xstringLiteralLongSingle_AFTER_EXPRESSION:
+    - match: '\}'
+      scope: punctuation.definition.string.expression.literal.single.long.SYNTAX
+      set: xstringLiteralLongSingle
+    - _throw: true
+
+
+  xiriOrFunction:
+    - _goto:
+        - argList
+        - xiri
+
+  xrdfLiteral:
+    - _goto: [xrdfLiteral_AFTER_STRING_LITERAL, xstringLiteral]
+
+  xrdfLiteral_AFTER_STRING_LITERAL:
+    - meta_include_prototype: false
+    - include: comment
+    - match: '@'
+      scope: punctuation.separator.language-tag.symbol.SYNTAX
+      set: languageTag
+    - match: '\^\^'
+      scope: punctuation.separator.datatype.symbol.SYNTAX
+      set: xdatatype
+    - include: else_pop
+
+  xstringLiteral:
+    - match: '"""'
+      scope: punctuation.definition.string.begin.literal.double.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - match: '"'
+      scope: punctuation.definition.string.begin.literal.double.short.SYNTAX
+      set: xstringLiteralShortDouble
+    - match: ''''''''
+      scope: punctuation.definition.string.begin.literal.single.long.SYNTAX
+      set: xstringLiteralLongSingle
+    - match: ''''
+      scope: punctuation.definition.string.begin.literal.single.short.SYNTAX
+      set: xstringLiteralShortSingle
+    - _throw: true
+
+  xdatatype:
+    - meta_include_prototype: false
+    - match: '{{iriRef_LOOKAHEAD}}'
+      set:
+        - datatype_META
+        - xiri
+    - match: '{{prefixedNameNamespace_LOOKAHEAD}}'
+      set:
+        - datatype_META
+        - xiri
+    - _throw: true
+
+  xiri:
+    - match: '{{prefixedNameNamespace_LOOKAHEAD}}'
+      set: prefixedName
+    - match: '<'
+      scope: punctuation.definition.iri.begin.SYNTAX
+      set: xiri_AFTER_BEGIN
+    - _throw: true
+
+  xiri_AFTER_BEGIN:
+    - meta_include_prototype: false
+    - match: '{{IRI_CONTENTS}}'
+      scope: string.unquoted.iri.SYNTAX
+    - match: '{{UCHAR}}'
+      scope: constant.character.escape.iri.SYNTAX
+    - match: '>'
+      scope: punctuation.definition.iri.end.SYNTAX
+      pop: true
+    - match: '\{'
+      scope: punctuation.definition.iri.expression.SYNTAX
+      set: 
+        - xiri_AFTER_EXPRESSION
+        - expression
+    - match: '\s'
+      scope: invalid.illegal.token.expected.iriRef_AFTER_BEGIN.SYNTAX
+    - _throw: false
+
+  xiri_AFTER_EXPRESSION:
+    - match: '\}'
+      scope: punctuation.definition.iri.expression.SYNTAX
+      set: xiri_AFTER_BEGIN
+    - _throw: true
+
+  varOrXTerm:
+    - match: '{{START_XEXPR}}'
+      set:
+        - closeBrace
+        - expression
+    - match: '{{var_LOOKAHEAD}}'
+      set: var
+    - include: xTerm
+
+  varOrXIri:
+    - include: varOrXExprOpt
+    - include: xiri
+
+  varOrXExpr:
+    - include: varOrXExprOpt
+    - _throw: true
+
+  varOrXExprOpt:
+    - match: '{{START_XEXPR}}'
+      set:
+        - closeBrace
+        - expression
+    - match: '{{var_LOOKAHEAD}}'
+      set: var
+
+  xTerm:
+    - match: '{{START_XEXPR}}'
+      set:
+        - closeBrace
+        - expression
+    - match: '{{prefixedNameNamespace_LOOKAHEAD}}'
+      set: prefixedName
+    - match: <
+      scope: punctuation.definition.iri.begin.rqg
+      set: xiri_AFTER_BEGIN
+    - _cases: ['true', 'false']
+      scope: constant.language.boolean.WORD.SYNTAX
+      pop: true
+    - include: numericLiteral
+    - _switch:
+        - blankNode
+        - openParen: nil
+    - include: xrdfLiteral
+
+  xNode:
+    - match: '{{START_XEXPR}}'
+      set:
+        - closeBrace
+        - expression
+    - match: '{{prefixedNameNamespace_LOOKAHEAD}}'
+      set: prefixedName
+    - match: '<'
+      scope: punctuation.definition.iri.begin.SYNTAX
+      set: xiri_AFTER_BEGIN
+    - include: xrdfLiteral
+
+  xExpr:
+    - match: '{{START_XEXPR}}'
+      set:
+        - closeBrace
+        - expression
+    - _throw: true
+
+  primaryExpression:
+    - match: '{{var_LOOKAHEAD}}'
+      set: var
+    - match: '{{openParen_LOOKAHEAD}}'
+      set: brackettedExpression
+    - match: '{{templateQuery_LOOKAHEAD}}'
+      set: 
+        - subQuery_END
+        - subTemplateQuery
+    - include: builtInCall
+    - include: xliteral
+    - include: xiriOrFunction
+
+  primaryExpressionNotBracketted:
+    - match: '{{var_LOOKAHEAD}}'
+      set: var
+    - match: '{{templateQuery_LOOKAHEAD}}'
+      set: 
+        - subQuery_END
+        - subTemplateQuery
+    - include: builtInCall
+    - include: xliteral
+    - include: xiriOrFunction
+
+  xliteral:
+    - match: '{{stringLiteral_LOOKAHEAD}}'
+      set: xrdfLiteral
+    - _cases: ['true', 'false']
+      scope: constant.language.boolean.WORD.SYNTAX
+      pop: true
+    - include: numericLiteral
+
+  graphGraphPattern_AFTER_GRAPH:
+    - _goto: [groupGraphPattern, varOrXIri]
+
+  serviceGraphPattern_AFTER_SILENT:
+    - _goto: [groupGraphPattern, varOrXIri]
+
+  triplesSameSubject:
+    - _switch:
+        - hollowAnonymousBlankNode: [propertyListNotEmpty, hollowAnonymousBlankNode]
+        - anonymousBlankNode: anonymousBlankNode_LATENT_PL_PLNE
+        - varOrTerm: [propertyListNotEmpty_REQUIRED, varOrXTerm]
+        - triplesNode: [propertyList, triplesNode]
+    - _throw: true
+
+  verb:
+    - match: '{{a_LOOKAHEAD}}'
+      set: a
+    - _goto: varOrXTerm
+
+  triplesSameSubjectPath:
+    - _switch:
+        - hollowAnonymousBlankNode: [propertyListPathNotEmpty, hollowAnonymousBlankNode]
+        - anonymousBlankNode: anonymousBlankNode_LATENT_PLP_PLPNE
+        - varOrTerm: [propertyListPathNotEmpty, varOrXTerm]
+        - triplesNode: [propertyListPath, triplesNodePath]
+    - _throw: true
+
+  verbPathOrSimple:
+    - match: '{{path_LOOKAHEAD}}'
+      set: path
+    - match: '{{var_LOOKAHEAD}}'
+      set: varOrXExpr
+    - _throw: true
+
+  pathPrimary:
+    - meta_include_prototype: false
+    - match: '!'
+      scope: keyword.operator.path.logical.not.rq meta.path.negated.rq
+      set: [pathNegatedPropertySet_META, pathNegatedPropertySet]
+    - _open_paren: section.path-group.sub
+      set: [pathPrimary_GROUP_TERMINATE, path]
+    - match: '{{a_LOOKAHEAD}}'
+      set: a
+    - _goto: xiri
+
+  pathOneInPropertySet_AFTER_INVERSE: 
+    - meta_include_prototype: false
+    - match: '{{a_LOOKAHEAD}}'
+      set: a
+    - _goto: xiri
+ 
+  graphNode:
+    - match: '{{hollowAnonymousBlankNode_LOOKAHEAD}}'
+      set: hollowAnonymousBlankNode
+    - match: '{{anonymousBlankNode_LOOKAHEAD}}'
+      set: anonymousBlankNode_LATENT
+    - match: '{{triplesNode_LOOKAHEAD}}'
+      set: triplesNode
+    - _goto: varOrXTerm
+
+  graphNodePath:
+    - match: '{{hollowAnonymousBlankNode_LOOKAHEAD}}'
+      set: hollowAnonymousBlankNode
+    - match: '{{anonymousBlankNode_LOOKAHEAD}}'
+      set: anonymousBlankNodePath_LATENT
+    - match: '{{triplesNode_LOOKAHEAD}}'
+      set: triplesNodePath
+    - _goto: varOrXTerm
