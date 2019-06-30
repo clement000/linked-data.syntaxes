@@ -1,0 +1,79 @@
+%YAML 1.2
+---
+name: SPARQL-Generate logs (LinkedData)
+file_extensions:
+  - rqglog
+scope: source.rqglog
+variables:
+
+  PLA_anything: '(?=[\S\s])'
+  TRACE: '(?:^.*TRACE.*$)'
+  TRACE_LOOKAHEAD: '(?=^.*TRACE)'
+  DEBUG: '(?:^.*DEBUG.*$)'
+  DEBUG_LOOKAHEAD: '(?=^.*DEBUG)'
+  INFO: '(?:^.*INFO.*$)'
+  INFO_LOOKAHEAD: '(?=^.*INFO)'
+  WARN: '(?:^.*WARN.*$)'
+  WARN_LOOKAHEAD: '(?=^.*WARN)'
+  ERROR: '(?:^.*ERROR.*$)'
+  ERROR_LOOKAHEAD: '(?=^.*ERROR)'
+  QUERY_LOOKAHEAD: '(?=BASE)'
+
+contexts:
+  main:
+    - match: '{{TRACE_LOOKAHEAD}}'
+      set: trace
+    - match: '{{DEBUG_LOOKAHEAD}}'
+      set: debug
+    - match: '{{ERROR_LOOKAHEAD}}'
+      set: error
+
+  trace: 
+    - match: '{{TRACE}}'
+      scope: trace.rqglog
+    - include: query
+    - include: main
+    - match: '^.*$'
+      scope: trace.rqglog
+
+  debug: 
+    - match: '{{DEBUG}}'
+      scope: debug.rqglog
+    - include: query
+    - include: main
+    - match: '^.*$'
+      scope: debug.rqglog
+
+  info: 
+    - match: '{{INFO}}'
+      scope: info.rqglog
+    - include: query
+    - include: main
+    - match: '^.*$'
+      scope: info.rqglog
+
+  warn: 
+    - match: '{{WARN}}'
+      scope: warn.rqglog
+    - include: query
+    - include: main
+    - match: '^.*$'
+      scope: warn.rqglog
+
+  error: 
+    - match: '{{ERROR}}'
+      scope: error.rqglog
+    - include: query
+    - include: main
+    - match: '^.*$'
+      scope: error.rqglog
+
+  query:
+    - match: '{{QUERY_LOOKAHEAD}}'
+      push: Packages/LinkedData/sparql-generate.sublime-syntax
+      meta_content_scope: abcd
+      with_prototype:
+        - match: '(?=^[0-9][0-9]:[0-9][0-9],[0-9][0-9][0-9])'
+          pop: true
+        - match: '(?=with initial values)'
+          pop: true
