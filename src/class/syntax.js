@@ -224,16 +224,36 @@ class def {
 
 	export_variables() {
 		let h_expanded = {};
-		let h_variables = this.variables;
-		for(let [si_variable, s_pattern] of Object.entries(h_variables)) {
-			h_expanded[si_variable] = s_pattern.replace(R_REFERENCE, (s_match, s_ref) => {
-				// ref not expanded yet
-				if(!(s_ref in h_expanded)) {
-					throw new Error(`variable '${s_ref}' referenced in ${this.path}#${si_variable} is out of reference order`);
-				}
+		let h_remainingVariables = JSON.parse(JSON.stringify(this.variables));
 
-				return h_expanded[s_ref];
-			});
+    // guard
+		var ntry =0;
+		var size = Object.keys(h_remainingVariables).length;
+
+		while(size!=0) {
+			for(let [si_variable, s_pattern] of Object.entries(h_remainingVariables)) {
+				try {
+					h_expanded[si_variable] = s_pattern.replace(R_REFERENCE, (s_match, s_ref) => {
+						// ref not expanded yet
+						if(!(s_ref in h_expanded)) {
+							throw new Error(`variable '${s_ref}' referenced in ${this.path}#${si_variable} is out of reference order. Trying to expand unkown ${s_match}. (attempt ${ntry})`);
+						}
+						return h_expanded[s_ref];
+					});
+					delete h_remainingVariables[si_variable];
+				} catch(e) {
+					console.warn(e.message);
+				}
+			}
+			let newSize = Object.keys(h_remainingVariables).length;
+			if(newSize!==0 && newSize===size) {
+				throw new Error(`Some variables referenced in ${this.path} could not be expanded: '${JSON.stringify(Object.keys(h_remainingVariables))}'`);
+			}
+			if(newSize!==0) {
+				console.warn(`export_variables for ${this.path}: new attempt needed. reduced number of variables to expand from ${size} to ${newSize}'`);
+			}
+			size = newSize;
+			ntry++;
 		}
 
 		return h_expanded;
