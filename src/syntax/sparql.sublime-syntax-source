@@ -1203,8 +1203,8 @@ contexts:
     - include: else_pop
 
   propertyListPathNotEmpty_AFTER_SEMICOLON:
-    - match: '{{verb_LOOKAHEAD}}'
-      set: [propertyListPathNotEmpty_AFTER_OBJECT_LIST_PATH, objectList, verb]
+    - match: '{{verbPathOrSimple_LOOKAHEAD}}'
+      set: [propertyListPathNotEmpty_AFTER_OBJECT_LIST_PATH, objectList , verbPathOrSimple]  
     - include: else_pop
 
   verbPathOrSimple:
@@ -1214,13 +1214,18 @@ contexts:
       set: var
     - _throw: true
 
+  hello:
+    - _case: hello
+      pop: true
+
+
   objectListPath:
     - _goto: [objectListPath_AFTER_OBJECT_PATH, objectPath]
 
   objectListPath_AFTER_OBJECT_PATH:
     - match: ','
       scope: punctuation.separator.object.rq
-      push: objectPath
+      push: objectListPath
     - include: else_pop
 
   objectPath:
@@ -1230,24 +1235,23 @@ contexts:
     - _goto: [pathAlternative_AFTER_SEQUENCE, pathSequence]
 
   pathAlternative_AFTER_SEQUENCE:
-    - meta_include_prototype: false
     - match: '\|'
       scope: keyword.operator.path.alternative.rq
-      set: pathSequence
+      set: path
     - include: else_pop
 
   pathSequence:
     - _goto: [pathSequence_AFTER_FRAGMENT, pathEltOrInverse]
 
   pathSequence_AFTER_FRAGMENT:
-    - meta_include_prototype: false
+#    - meta_include_prototype: false
     - match: '\/'
       scope: keyword.operator.path.separator.rq
-      push: pathEltOrInverse
+      push: pathSequence
     - include: else_pop
 
   pathEltOrInverse:
-    - meta_include_prototype: false
+#    - meta_include_prototype: false
     - match: '\^'
       scope: keyword.operator.path.inverse.rq meta.path.inverse.rq
       set: [pathInverse_META, pathElt]
@@ -1262,17 +1266,17 @@ contexts:
     - _goto: [pathMod, pathPrimary]
 
   pathMod:
-    - meta_include_prototype: false
-    - match: '\?'
+    # - meta_include_prototype: false
+    - match: '\?{{KEYWORD_BOUNDARY}}'
       scope: keyword.operator.path.quantifier.zero-or-one.rq
-    - match: '\*'
+    - match: '\*{{KEYWORD_BOUNDARY}}'
       scope: keyword.operator.path.quantifier.zero-or-more.rq
-    - match: '\+'
+    - match: '\+{{KEYWORD_BOUNDARY}}'
       scope: keyword.operator.path.quantifier.one-or-more.rq
     - include: else_pop
 
   pathPrimary:
-    - meta_include_prototype: false
+#    - meta_include_prototype: false
     - match: '!'
       scope: keyword.operator.path.logical.not.rq meta.path.negated.rq
       set: [pathNegatedPropertySet_META, pathNegatedPropertySet]
@@ -1282,7 +1286,7 @@ contexts:
     - _throw: true
 
   pathPrimary_GROUP_TERMINATE:
-    - meta_include_prototype: false
+#    - meta_include_prototype: false
     - _close_paren: section.path-group.sub
       pop: true
     - _throw: true
@@ -1293,39 +1297,39 @@ contexts:
       pop: true
 
   pathNegatedPropertySet:
-    - meta_include_prototype: false
+#    - meta_include_prototype: false
     - _open_paren: section.path
       set: [pathNegatedPropertySet_AFTER_GROUP_BEGIN]
     - _goto: pathOneInPropertySet
 
   pathNegatedPropertySet_AFTER_GROUP_BEGIN:
-    - meta_include_prototype: false
+#    - meta_include_prototype: false
     - _close_paren: section.path
       pop: true
     - _goto: [pathNegatedPropertySet_GROUP_TERMINATE, pathNegatedPropertySet_AFTER_SET, pathOneInPropertySet]
 
   pathNegatedPropertySet_AFTER_SET:
-    - meta_include_prototype: false
+#    - meta_include_prototype: false
     - match: '\|'
       scope: keyword.operator.path.alternative.rq
       set: pathOneInPropertySet
     - include: else_pop
 
   pathNegatedPropertySet_GROUP_TERMINATE:
-    - meta_include_prototype: false
+#    - meta_include_prototype: false
     - _close_paren: section.path
       pop: true
     - _throw: true
 
   pathOneInPropertySet:
-    - meta_include_prototype: false
+#    - meta_include_prototype: false
     - match: '\^'
       scope: keyword.operator.path.inverse.rq
       set: pathOneInPropertySet_AFTER_INVERSE
     - _goto: pathOneInPropertySet_AFTER_INVERSE
 
   pathOneInPropertySet_AFTER_INVERSE:
-    - meta_include_prototype: false
+#    - meta_include_prototype: false
     - include: predicateData
     - _throw: true
 
@@ -1431,7 +1435,7 @@ contexts:
   conditionalOrExpression_AFTER_CONDITIONAL_AND_EXPRESSION:
     - match: '\|\|'
       scope: keyword.operator.conditional.or.rq
-      set: [conditionalAndExpression, valueLogical]
+      set: conditionalOrExpression
     - include: else_pop
 
   conditionalAndExpression:
@@ -1591,7 +1595,7 @@ contexts:
         - builtInCall_TERMINATE
         - expression
         - builtInCallArguments
-    - _cases_camel:
+    - _cases:
         - langMatches
         - strStarts
         - strBefore
@@ -1629,7 +1633,7 @@ contexts:
     - _cases: [concat, coalesce]
       scope: support.function.built-in.WORD.rq
       set: expressionList
-    - _cases_camel:
+    - _cases:
         - isIri
         - isUri
         - isBlank
