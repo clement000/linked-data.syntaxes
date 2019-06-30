@@ -133,13 +133,34 @@ module.exports = {
 					deps: ['build/sublime/assets/*'],
 					run: /* syntax: bash */ `
 						cd $(dirname $@)
-						zip -r $(basename $@) assets/
+#						zip -r $(basename $@) assets/
+						cp assets/* "/mnt/c/Users/maxime.lefrancois/AppData/Roaming/Sublime Text 3/Packages/LinkedData"
 					`,
 				}),
 
 				'assets': {
 					'LICENSE': () => ({
 						copy: 'LICENSE',
+					}),
+
+					'sparql-generate-2.0-SNAPSHOT.jar': () => ({
+						copy: 'src/sparql-generate/sparql-generate-2.0-SNAPSHOT.jar',
+					}),
+
+					'sparql-generate.sublime-build': () => ({
+						copy: 'src/sparql-generate/sparql-generate.sublime-build',
+					}),
+
+					'sparql-generate-log.sublime-color-scheme': () => ({
+						copy: 'src/sparql-generate/sparql-generate-log.sublime-color-scheme',
+					}),
+
+					'sparql-generate-log.sublime-settings': () => ({
+						copy: 'src/sparql-generate/sparql-generate-log.sublime-settings',
+					}),
+
+					'sparql-generate-log.sublime-syntax': () => ({
+						copy: 'src/sparql-generate/sparql-generate-log.sublime-syntax',
 					}),
 
 					':syntax': [s_syntax => ({
