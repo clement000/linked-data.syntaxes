@@ -2,7 +2,7 @@
   "selector": "source.rqg",
   "file_patterns": ["*.rqg"],
   "keyfiles": ["sparql-generate-conf.json"],
-  "shell_cmd": "java -jar \"$packages\\LinkedData\\sparql-generate-2.0-SNAPSHOT.jar\" -d \"$file_path\" -f \"$file_base_name.rqglog\"",
+  "shell_cmd": "java -jar \"$packages\\LinkedData\\sparql-generate.jar\" -d \"$file_path\" -f \"$file_base_name.rqglog\"",
   "cancel": { "kill": true }
 //  "file_regex": "^\\s*File \"(...*?)\", line ([0-9]*)"
 }

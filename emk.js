@@ -1,6 +1,9 @@
 const fs = require('fs');
 
 const p_prefixes_jsonld = 'http://prefix.cc/context.jsonld';
+const p_sparql_generate = 'https://ci.mines-stetienne.fr/sparql-generate/sparql-generate-latest.jar';
+
+
 const p_package = 'development' === process.env.NODE_ENV? 'Packages/User/linked-data': 'Packages/LinkedData';
 
 
@@ -133,8 +136,8 @@ module.exports = {
 					deps: ['build/sublime/assets/*'],
 					run: /* syntax: bash */ `
 						cd $(dirname $@)
-#						zip -r $(basename $@) assets/
-						cp assets/* "/mnt/c/Users/maxime.lefrancois/AppData/Roaming/Sublime Text 3/Packages/LinkedData"
+						zip -r $(basename $@) assets/
+#						cp assets/* "/mnt/c/Users/maxime.lefrancois/AppData/Roaming/Sublime Text 3/Packages/LinkedData"
 					`,
 				}),
 
@@ -143,8 +146,10 @@ module.exports = {
 						copy: 'LICENSE',
 					}),
 
-					'sparql-generate-2.0-SNAPSHOT.jar': () => ({
-						copy: 'src/sparql-generate/sparql-generate-2.0-SNAPSHOT.jar',
+					'sparql-generate.jar': () => ({
+						run: /* syntax: bash */ `
+							curl ${p_sparql_generate} > $@
+						`,
 					}),
 
 					'sparql-generate.sublime-build': () => ({
