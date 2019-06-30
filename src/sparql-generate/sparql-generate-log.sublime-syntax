@@ -71,9 +71,10 @@ contexts:
   query:
     - match: '{{QUERY_LOOKAHEAD}}'
       push: Packages/LinkedData/sparql-generate.sublime-syntax
-      meta_content_scope: abcd
       with_prototype:
         - match: '(?=^[0-9][0-9]:[0-9][0-9],[0-9][0-9][0-9])'
+          clear_scopes: true
           pop: true
         - match: '(?=with initial values)'
+          clear_scopes: true
           pop: true
