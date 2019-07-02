@@ -1,0 +1,10 @@
+[
+    {
+        "keys": ["ctrl+shift+l"],
+        "command": "open_file", "args": { "file": "$file_path/$file_base_name.rqglog" },
+    },
+    {
+        "keys": ["ctrl+shift+o"],
+        "command": "open_file", "args": { "file": "$file_path/sparql-generate-conf.json" },
+    }
+]

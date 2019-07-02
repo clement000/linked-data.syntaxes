@@ -1,0 +1,107 @@
+[
+    {
+        "id": "tools",
+        "children":
+        [
+            {
+                "caption": "SPARQL-Generate",
+                "id": "sparql-generate",
+                "mnemonic": "S",
+                "children":
+                [
+                    {
+                        "caption": "View logs",
+                        "command": "open_file", "args": { "file": "$file_path/$file_base_name.rqglog" }
+                    },
+                    {
+                        "caption": "Edit project config.",
+                        "command": "open_file", "args": { "file": "$file_path/sparql-generate-conf.json" }
+                    },
+                    { "caption": "-" },
+                    {
+                        "caption": "SPARQL-Generate language overview",
+                        "command": "sparql_generate_doc", "args": { "url": "https://ci.mines-stetienne.fr/sparql-generate/" }
+                    },
+                    {
+                        "caption": "SPARQL-Generate releases",
+                        "command": "sparql_generate_doc", "args": { "url": "https://github.com/sparql-generate/sparql-generate/releases" }
+                    },
+                    { "caption": "-" },
+                    {
+                        "caption": "Sublime package documentation",
+                        "command": "sparql_generate_doc", "args": { "url": "https://ci.mines-stetienne.fr/sparql-generate/sublime.html" }
+                    },
+                    {
+                        "caption": "Sublime package releases",
+                        "command": "sparql_generate_doc", "args": { "url": "https://github.com/sparql-generate/sublime-editor/releases" }
+                    },
+                    { "caption": "-" },
+                    {
+                        "caption": "We are on GitHub",
+                        "command": "sparql_generate_doc", "args": { "url": "http://github.com/sparql-generate/sparql-generate/" }
+                    },
+                    {
+                        "caption": "Team",
+                        "command": "sparql_generate_doc", "args": { "url": "https://ci.mines-stetienne.fr/sparql-generate/team-list.html" }
+                    },
+                ]
+            }
+        ]
+    },
+    {
+        "id": "preferences",
+        "children":
+        [
+            {
+                "caption": "Package Settings",
+                "mnemonic": "P",
+                "id": "package-settings",
+                "children":
+                [
+                    {
+                        "caption": "SPARQL-Generate",
+                        "mnemonic": "S",
+                        "children":
+                        [
+                            {
+                                "caption": "Settings",
+                                "command": "open_file", "args": { "file": "${packages}/LinkedData/sparql-generate.sublime-settings" }
+                            },
+                            {
+                                "caption": "Key Bindings",
+                                "command": "open_file", "args": { "file": "${packages}/LinkedData/Default.sublime-keymap"}
+                            },
+                            { "caption": "-" },
+                            {
+                                "caption": "SPARQL-Generate language overview",
+                                "command": "sparql_generate_doc", "args": { "url": "https://ci.mines-stetienne.fr/sparql-generate/" }
+                            },
+                            {
+                                "caption": "SPARQL-Generate releases",
+                                "command": "sparql_generate_doc", "args": { "url": "https://github.com/sparql-generate/sparql-generate/releases" }
+                            },
+                            { "caption": "-" },
+                            {
+                                "caption": "Sublime package documentation",
+                                "command": "sparql_generate_doc", "args": { "url": "https://ci.mines-stetienne.fr/sparql-generate/sublime.html" }
+                            },
+                            {
+                                "caption": "Sublime package releases",
+                                "command": "sparql_generate_doc", "args": { "url": "https://github.com/sparql-generate/sublime-editor/releases" }
+                            },
+                            { "caption": "-" },
+                            {
+                                "caption": "We are on GitHub",
+                                "command": "sparql_generate_doc", "args": { "url": "http://github.com/sparql-generate/sparql-generate/" }
+                            },
+                            {
+                                "caption": "Team",
+                                "command": "sparql_generate_doc", "args": { "url": "https://ci.mines-stetienne.fr/sparql-generate/team-list.html" }
+                            },
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+]
