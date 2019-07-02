@@ -1,7 +1,6 @@
 const fs = require('fs');
 
 const p_prefixes_jsonld = 'http://prefix.cc/context.jsonld';
-const p_sparql_generate = 'https://ci.mines-stetienne.fr/sparql-generate/sparql-generate-latest.jar';
 
 
 const p_package = 'development' === process.env.NODE_ENV? 'Packages/User/linked-data': 'Packages/LinkedData';
@@ -135,37 +134,20 @@ module.exports = {
 				'LinkedData.sublime-package': () => ({
 					deps: ['build/sublime/assets/*'],
 					run: /* syntax: bash */ `
-						cd $(dirname $@)
-						zip -r $(basename $@) assets/
-#						cp assets/* "/mnt/c/Users/maxime.lefrancois/AppData/Roaming/Sublime Text 3/Packages/LinkedData"
+						pwd
+						echo $(dirname $@)/assets/
+						echo $(dirname $@)
+						echo $(basename $@)
+					  cp src/sparql-generate/* $(dirname $@)/assets/
+						cd $(dirname $@)/assets/
+						zip -r $(basename $@) *
+						mv $(basename $@) ..
 					`,
 				}),
 
 				'assets': {
 					'LICENSE': () => ({
 						copy: 'LICENSE',
-					}),
-
-					'sparql-generate.jar': () => ({
-						run: /* syntax: bash */ `
-							curl ${p_sparql_generate} > $@
-						`,
-					}),
-
-					'sparql-generate.sublime-build': () => ({
-						copy: 'src/sparql-generate/sparql-generate.sublime-build',
-					}),
-
-					'sparql-generate-log.sublime-color-scheme': () => ({
-						copy: 'src/sparql-generate/sparql-generate-log.sublime-color-scheme',
-					}),
-
-					'sparql-generate-log.sublime-settings': () => ({
-						copy: 'src/sparql-generate/sparql-generate-log.sublime-settings',
-					}),
-
-					'sparql-generate-log.sublime-syntax': () => ({
-						copy: 'src/sparql-generate/sparql-generate-log.sublime-syntax',
 					}),
 
 					':syntax': [s_syntax => ({
