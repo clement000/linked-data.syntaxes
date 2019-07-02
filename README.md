@@ -1,88 +1,70 @@
-# Syntax highlighting definitions for various Linked Data languages
+# SPARQL-Generate integration in Sublime Text
 
-Each syntax highlighter reflects a complete implementation of the grammar specification for its language. This provides highly-specific scoping and instant feedback on malformed code (i.e., invalid or misplaced tokens are easily identified).
+Edit and run [SPARQL-Generate](https://ci.mines-stetienne.fr/sparql-generate/) projects directly in Sublime text!
+
+
 
 ### Install:
-Available on [Package Control](https://packagecontrol.io/packages/LinkedData) as `LinkedData` .
 
-### Activating the Light Color Scheme
-The package ships with two color schemes which are designed specifically for the detailed scopes that the syntax highlighting definitions create. By default, the package uses the [Macaron Dark](#macaron-dark) color scheme. If you prefer to use [Macaron Light](#macaron-light), you'll need to create a settings file to override the syntaxes:
-
-Create a new file in your Sublime Text 3 Packages directory: `Packages/User/LinkedData.sublime-settings`
-```json
-// These settings will override both User and Default settings for the specific LinkedData syntaxes
-{
-	"color_scheme": "Packages/LinkedData/macaron-light.sublime-color-scheme"
-}
-```
-
-Then, create a symbolic link to this file for each syntax (shown here are terminal commands to be run for \*nix systems). The files should be in the `User` subdirectory in the [ST3 packages directory](https://stackoverflow.com/a/49967132/1641160)):
-```bash
-ln -s LinkedData.sublime-settings n-triples.sublime-settings
-ln -s LinkedData.sublime-settings n-quads.sublime-settings
-ln -s LinkedData.sublime-settings turtle.sublime-settings
-ln -s LinkedData.sublime-settings trig.sublime-settings
-ln -s LinkedData.sublime-settings notation3.sublime-settings
-ln -s LinkedData.sublime-settings sparql.sublime-settings
-```
-
-This will override the default color scheme when any of these syntaxes are loaded in the current view.
+To use SPARQL-Generate with Sublime Text, follow these steps:
 
 
-#### Features:
- - Highly-specific scoping allows for very detailed color schemes.
- - Malformed syntax detection. Expected token(s) are inspectable via scope name.
- - Auto-completion and validation for prefix mappings registered on [prefix.cc](http://prefix.cc).
+1. Browse the latest [package release](https://github.com/sparql-generate/sublime-editor/releases) whose version name ends with `sparql-generate`, and download the file with the suffix `.sublime-package`
+  - Note: this file is actually a zip built from the sources with the command `npx emk`
 
-#### Currently supported languages:
- - SPARQL 1.1
- - Turtle (TTL)
- - TriG
- - N-Triples (NT)
- - N-Quads (NQ)
- - Notation3 (N3)
+2. In Sublime Text v3, open the `Packages` folder. (Preferences -> Browse Packages...)
 
-#### Currently supported platforms:
- - Sublime Text 3
+3. Navigate to `.../Sublime Text 3/Installed Packages`, and copy the file here as `LinkedData.sublime-package`.
 
-#### Currently supported color themes:
- - Macaron Dark
- - Macaron Light (in beta)
+4. Go back to `.../Sublime Text 3/Packages`, create a directory named `LinkedData`, and copy inside this directory the [latest jar of SPARQL-Generate](https://ci.mines-stetienne.fr/sparql-generate/language-cli.html) renamed `sparql-generate.jar`.
 
-#### *Planned langauage support*:
- - ShExC
- - OWL Manchester
- - OWL Functional-Style
- - RDFa
- - JSON-LD
 
-#### *Planned platform support*:
- - Atom
- - CodeMirror
- - Emacs
- - minted (LaTeX)
- - ~Ace~
+### Test:
 
-#### *Planned color theme support*
- - *Suggestions?*
+To test the installation is fine, follow these steps:
 
----
+1. Download the [SPARQL-Generate tutorial workspace.](https://eswc2018-sparql-ext.github.io/tutorial/sparql-generate-tutorial.zip)
 
-### Previews:
+2. Unzip it, and open one of the folders it contains inside Sublime Text (File -> Open Folder...)
 
-#### Macaron Dark
+3. Open the main query, you should see the syntax getting colored
 
-##### Turtle:
-![Turtle Preview](doc/preview/macaron-dark/turtle.png)
+4. Build the project (Tools -> Build), check that `sparql-generate.jar` has been found.
 
-##### SPARQL:
-![SPARQL Preview](doc/preview/macaron-dark/sparql.png)
+5. Check the output (file ending with `.out`).
 
-#### Macaron Light
+6. Check the log (file ending with `.rqglog`). Key shortcut CTRL+SHIFT+L opens the log. (SUPER+SHIFT+L on Mac) 
 
-##### Turtle:
-![Turtle Preview](doc/preview/macaron-light/turtle.png)
+### Configure:
 
-##### SPARQL:
-![SPARQL Preview](doc/preview/macaron-light/sparql.png)
+You can configure your SPARQL-Generate project inside a `sparql-generate-conf.json` file. Key shortcut CTRL+SHIFT+O should open this file (SUPER+SHIFT+O on Mac).
 
+The configuration of this file is documented on the [SPARQL-Generate website](https://ci.mines-stetienne.fr/sparql-generate/sublime.html). 
+
+
+### Documentation:
+
+The playground contains a progressive documentation of [SPARQL-Generate](https://ci.mines-stetienne.fr/sparql-generate/playground.html).  Just load the examples one by one, read the text, and experiment.  
+
+An html documentation of the package is available on the [SPARQL-Generate website](https://ci.mines-stetienne.fr/sparql-generate/sublime.html). 
+
+
+
+#### Developed by
+
+
+Maxime Lefrançois
+
+MINES Saint-Étienne, FR
+
+http://maxime-lefrancois.info/
+
+
+As an extension of the excellent [Sublime Text `LinkedData` package](https://packagecontrol.io/packages/LinkedData) developed by:
+
+
+Blake Regalia
+
+University of California, Santa Barbara, CA, USA
+
+https://blake-regalia.net/
