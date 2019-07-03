@@ -8,6 +8,11 @@ Edit and run [SPARQL-Generate](https://ci.mines-stetienne.fr/sparql-generate/) p
 
 To use SPARQL-Generate with Sublime Text, follow these steps:
 
+Prerequisites:
+
+- Java SE v8 minimum installed
+- java executable available in the path
+- Sublime Text v3
 
 1. Browse the latest [package release](https://github.com/sparql-generate/sublime-editor/releases) whose version name ends with `sparql-generate`, and download the file with the suffix `.sublime-package`
   - Note: this file is actually a zip built from the sources with the command `npx emk`
@@ -16,7 +21,9 @@ To use SPARQL-Generate with Sublime Text, follow these steps:
 
 3. Navigate to `.../Sublime Text 3/Installed Packages`, and copy the file here as `LinkedData.sublime-package`.
 
-4. Go back to `.../Sublime Text 3/Packages`, create a directory named `LinkedData`, and copy inside this directory the [latest jar of SPARQL-Generate](https://ci.mines-stetienne.fr/sparql-generate/language-cli.html) renamed `sparql-generate.jar`.
+4. Go back to `.../Sublime Text 3/Packages`, create a directory named `LinkedData`, and copy inside this directory the [latest jar of SPARQL-Generate](https://ci.mines-stetienne.fr/sparql-generate/language-cli.html). 
+
+5. Rename this file as `sparql-generate.jar`.
 
 
 ### Test:
@@ -27,7 +34,7 @@ To test the installation is fine, follow these steps:
 
 2. Unzip it, and open one of the folders it contains inside Sublime Text (File -> Open Folder...)
 
-3. Open the main query, you should see the syntax getting colored
+3. Open the project in the left side bar, search and open the main query. You should see the syntax getting colored
 
 4. Build the project (Tools -> Build), check that `sparql-generate.jar` has been found.
 
