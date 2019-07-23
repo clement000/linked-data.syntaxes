@@ -17,7 +17,7 @@ module.exports = {
 		line_highlight: '#a7adba',
 		multi_edit_highlight: '#A5EB5144',
 		find_highlight: '#FFE792',
-		find_highlight_foreground: '#FFE792',
+		//find_highlight_foreground: '#FFE792',
 
 		selection: '#dfe1e8',
 		selection_border: '#B0CDE7',
