@@ -863,7 +863,8 @@ contexts:
     - match: '\.'
       scope: punctuation.terminator.triple.rq
       set: triplesBlock_OPTIONAL
-    - include: else_pop
+    - match: '{{PLA_anything}}'
+      set: triplesBlock_OPTIONAL 
 
   graphPatternNotTriples:
     - match: '{{openBrace_LOOKAHEAD}}'
@@ -1711,7 +1712,7 @@ contexts:
     - _throw: true
 
   optionalArgumentExpression:
-    - _close_paren: definition.arguments
+    - match: '(?=\))' 
       pop: true
     - _goto: expression
 
