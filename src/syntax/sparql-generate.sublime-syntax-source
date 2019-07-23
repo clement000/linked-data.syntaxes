@@ -12,7 +12,7 @@ variables:
   closeBrace_LOOKAHEAD: '(?=})'
   closeParen_LOOKAHEAD: '(?=\))'
 
-  # query lookaheads
+  # query lookaheads 
   generateQuery_LOOKAHEAD: '(?i)(?=generate{{KEYWORD_BOUNDARY}})'
   templateQuery_LOOKAHEAD: '(?i)(?=template{{KEYWORD_BOUNDARY}})'
   query_LOOKAHEAD: >-
@@ -49,6 +49,9 @@ variables:
   format_LOOKAHEAD: '(?i)(?=format{{KEYWORD_BOUNDARY}})'
   group_LOOKAHEAD: '(?i)(?=group{{KEYWORD_BOUNDARY}})'
 
+  list_LOOKAHEAD: '(?i)(?=list{{KEYWORD_BOUNDARY}})'
+  expressions_LOOKAHEAD: '(?i)(?=expressions{{KEYWORD_BOUNDARY}})'
+
   START_XEXPR_LOOKAHEAD: '(?=($|?){)'
   START_XEXPR: '(?:[$?]\{)'
 
@@ -82,6 +85,11 @@ contexts:
 
   closeBrace:
     - _close_brace: definition.close-brace
+      pop: true
+    - _throw: true
+
+  openParen:
+    - _open_paren: definition.open-paren
       pop: true
     - _throw: true
 
@@ -145,7 +153,7 @@ contexts:
       set: 
         - postSelectClause
         - solutionModifier
-        - whereClause
+        - optional_whereClause
         - bindingClauses
         - datasetClause
         - generateClause
@@ -213,7 +221,7 @@ contexts:
         - var
         - as
         - expression
-    - _throw: true
+    - include: else_pop
 
   queryCall:
     - match: '{{PLA_anything}}'
@@ -403,7 +411,7 @@ contexts:
     - match: ';'
       scope: punctuation.separator.group.rq
       set: groupOption_AFTER_SEMICOLON
-    - include: else_pop
+    - include: else_pop 
 
   groupOption_AFTER_SEMICOLON:
     - _case: separator
@@ -510,7 +518,7 @@ contexts:
       set: 
         - solutionModifier
         - optional_whereClause
-        - bindingClauses
+        - bindingClauses 
         - datasetClause
         - functionName
     - _throw: true 
@@ -534,8 +542,23 @@ contexts:
       pop: true
     - match: '{{generateQuery_LOOKAHEAD}}'
       pop: true
+    - match: '{{graphPatternNotTriples_LOOKAHEAD}}'
+      pop: true
     - match: '{{MAT_word_or_any_one_char}}'
       scope: invalid.illegal.token.expected.objectList_AFTER_OBJECT.rq
+
+  object:
+    - match: '{{list_LOOKAHEAD}}'
+      set: 
+        - listNode
+    - _goto: graphNode
+
+  listNode:
+    - _case: list
+      set:
+        - closeParen
+        - expression
+        - openParen
 
   namedSelectClause:
     - meta_content_scope: meta.clause.select.rq
