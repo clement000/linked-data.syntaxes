@@ -1,0 +1,1032 @@
+%YAML 1.2
+---
+name: SPARQL-Generate
+file_extensions:
+  - rqg
+scope: source.rqg
+extends: sparql.syntax-source
+
+variables:
+ 
+  #newly added variables
+  varOrTerm_LOOKAHEAD: '(?={{var_LOOKAHEAD}}|{{term_LOOKAHEAD}})'
+  MAT_word_or_any_one_char: \w+|\S
+  PLA_anything: '(?=[\S\s])'
+  #**********************************
+  closeBrace_LOOKAHEAD: '(?=})'
+  closeParen_LOOKAHEAD: '(?=\))'
+
+  # query lookaheads 
+  generateQuery_LOOKAHEAD: '(?i)(?=generate{{KEYWORD_BOUNDARY}})'
+  templateQuery_LOOKAHEAD: '(?i)(?=template{{KEYWORD_BOUNDARY}})'
+  query_LOOKAHEAD: >-
+    (?x)(?=
+      {{selectQuery_LOOKAHEAD}}
+      |{{generateQuery_LOOKAHEAD}}
+      |{{templateQuery_LOOKAHEAD}}
+    ) 
+  functionQuery_LOOKAHEAD: '(?i)(?=function{{KEYWORD_BOUNDARY}})'
+
+  # binding clauses lookaheads
+  iterator_LOOKAHEAD: '(?i)(?=iterator{{KEYWORD_BOUNDARY}})'
+  source_LOOKAHEAD: '(?i)(?=source{{KEYWORD_BOUNDARY}})' 
+  bind_LOOKAHEAD: '(?i)(?=bind{{KEYWORD_BOUNDARY}})'
+  bindingClauses_LOOKAHEAD: >-
+    (?x)(?=
+      {{iterator_LOOKAHEAD}}
+      |{{source_LOOKAHEAD}}
+      |{{bind_LOOKAHEAD}}
+    )
+  accept_LOOKAHEAD: '(?i)(?=accept{{KEYWORD_BOUNDARY}})'
+
+ 
+  where_LOOKAHEAD: '(?i)(?=where{{KEYWORD_BOUNDARY}})'
+
+  uri_LOOKAHEAD: '(?i)(?=uri{{KEYWORD_BOUNDARY}})'
+  iri_LOOKAHEAD: '(?i)(?=iri{{KEYWORD_BOUNDARY}})'
+
+  before_LOOKAHEAD: '(?i)(?=before{{KEYWORD_BOUNDARY}})'
+  separator_LOOKAHEAD: '(?i)(?=separator{{KEYWORD_BOUNDARY}})'
+  after_LOOKAHEAD: '(?i)(?=after{{KEYWORD_BOUNDARY}})'
+
+  box_LOOKAHEAD: '(?i)(?=box{{KEYWORD_BOUNDARY}})'
+  format_LOOKAHEAD: '(?i)(?=format{{KEYWORD_BOUNDARY}})'
+  group_LOOKAHEAD: '(?i)(?=group{{KEYWORD_BOUNDARY}})'
+
+  list_LOOKAHEAD: '(?i)(?=list{{KEYWORD_BOUNDARY}})'
+  expressions_LOOKAHEAD: '(?i)(?=expressions{{KEYWORD_BOUNDARY}})'
+
+  START_XEXPR_LOOKAHEAD: '(?=($|?){)'
+  START_XEXPR: '(?:[$?]\{)'
+
+  ECHAR: '(?:\\[tbnrf"''\\\{\}])'
+  OPEN_EXPR:  '(?:\{)'
+  CLOSE_EXPR: '(?:\})'
+
+  STRING_SHORT_SINGLE: '[^\x{27}\x{5C}\x{0A}\x{0D}\{]'
+  STRING_SHORT_DOUBLE: '[^\x{22}\x{5C}\x{0A}\x{0D}\{]'
+  ECHAR_SINGLE: '(?:\\[tbnrf''\\\{\}])'
+  ECHAR_DOUBLE: '(?:\\[tbnrf"\\\{\}])'
+
+contexts:
+
+  # main:
+  #   - match: '{{PLA_anything}}'
+  #     set:
+  #       - EOF
+  #       - graphNode # test_context_here
+
+  # EOF:
+  #   - match: '{{MAT_word_or_any_one_char}}'
+  #     scope: invalid.illegal.token.expected.stringLiteralShortDouble.test
+  #     pop: true
+
+  #-----------newly added contexts
+
+  prefixDeclaration:
+    - include: prefixDeclarationSparql
+    
+  varOrTerm:
+    - switch:
+        - var
+        - term: graphTerm
+    - throw: true
+    
+  else_pop:
+    - meta_include_prototype: false
+    - match: '{{PLA_anything}}'
+      pop: true
+
+  #*****************************
+  openBrace:
+    - open.brace: definition.open-brace
+      pop: true
+    - throw: triplesSameSubject
+
+  closeBrace:
+    - close.brace: definition.close-brace
+      pop: true
+    - throw: true
+
+  openParen:
+    - open.paren: definition.open-paren
+      pop: true
+    - throw: true
+
+  closeParen:
+    - close.paren: definition.close-paren
+      pop: true
+    - throw: true
+
+  equal:
+    - match: '='
+      scope: definition.equal
+      pop: true
+    - throw: true
+
+  semicolon:
+    - match: ';'
+      scope: definition.semicolon
+      pop: true
+    - throw: true
+
+  as:
+    - word: as
+      scope: definition.as
+      pop: true
+    - throw: true
+
+
+  query:
+    - meta_include_prototype: false
+    - goto: [unit_AFTER_PROLOGUE, prologue]
+
+  unit_AFTER_PROLOGUE:
+    - match: '(#(\s*)(@unit)(\s*))'
+      captures:
+        1: comment.line.SYNTAX
+        2: meta.whitespace.SYNTAX
+        3: meta.directive.prologue.SYNTAX
+        4: meta.whitespace.SYNTAX
+      set: [unit_AFTER_PROLOGUE, line_comment]
+    - match: '{{query_LOOKAHEAD}}'
+      set: [valuesClause, query_AFTER_PROLOGUE]
+    - match: '{{functionQuery_LOOKAHEAD}}'
+      set: function_AFTER_PROLOGUE
+    - throw: false
+
+  query_AFTER_PROLOGUE:
+    - match: '{{selectQuery_LOOKAHEAD}}'
+      set: selectQuery
+    - match: '{{generateQuery_LOOKAHEAD}}'
+      set: generateQuery
+    - match: '{{templateQuery_LOOKAHEAD}}'
+      set: templateQuery
+    - throw: true
+
+  selectQuery:
+    - goto: [solutionModifier, whereClause, bindingClauses, datasetClause, namedSelectClause]
+
+  generateQuery:
+    - word: generate
+      scope: keyword.operator.word.modifier.generate.rqg 
+      set: 
+        - postSelectClause
+        - solutionModifier
+        - optional_whereClause
+        - bindingClauses
+        - datasetClause
+        - generateClause
+        - queryName
+    - throw: true
+
+  generateClause:
+    - goto: [ closeBrace, generateClauseSub, openBrace ]
+
+  generateClause_AFTER_ALL:
+    - close.brace: section.triples
+      pop: true
+    - throw: true
+
+  generateClauseSub:
+    - match: '{{triplesSameSubject_LOOKAHEAD}}'
+      set: [ generateClauseSub, constructTriples_OPTIONAL ]
+    - match: '{{generateQuery_LOOKAHEAD}}'
+      set: 
+        - generateClauseSub
+        - subQuery_END
+        - subGenerateQuery
+    - include: else_pop
+
+  subQuery_END:
+    - match: \.
+      pop: true
+    - throw: true
+
+  subGenerateQuery:
+    - word: generate
+      scope: keyword.operator.word.modifier.generate.rqg 
+      set: 
+        - postSelectClause
+        - solutionModifier
+        - optional_whereClause
+        - bindingClauses
+        - datasetClause
+        - subGenerateNameOrTemplate
+    - throw: true
+
+  subGenerateNameOrTemplate:
+    - match: '{{uri_LOOKAHEAD}}'
+      set: uriQueryCall
+    - match: '{{iri_LOOKAHEAD}}'
+      set: iriQueryCall
+    - match: '(?=\()'
+      set:
+        - generateClause
+        - varList
+    - match: '(?=\{)'
+      set: generateClause
+    - goto: queryCall
+
+  postSelectClause:
+    - word: expressions
+      set: postSelectExpressions
+    - include: else_pop
+
+  postSelectExpressions:
+    - open.paren: definition.vars
+      set:
+        - postSelectExpressions
+        - closeParen
+        - var
+        - as
+        - expression
+    - include: else_pop
+
+  queryCall:
+    - match: '{{PLA_anything}}'
+      set:
+        - argList
+        - varOrXIri
+
+  uriQueryCall:
+    - meta_content_scope: meta.query-name.SYNTAX
+    - word: uri
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - argList
+        - builtInCall_TERMINATE
+        - expression
+        - builtInCallArguments
+    - throw: true
+
+  iriQueryCall:
+    - meta_content_scope: meta.query-name.SYNTAX
+    - word: iri
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - argList
+        - builtInCall_TERMINATE
+        - expression
+        - builtInCallArguments
+    - throw: true
+
+  optional_whereClause:
+    - match: '{{where_LOOKAHEAD}}'
+      set: whereClause
+    - include: else_pop
+
+  datasetClause_AFTER_FROM:
+    - match: '{{generateQuery_LOOKAHEAD}}'
+      set: 
+        - datasetClause_AFTER_GENERATE_QUERY
+        - subGenerateQuery
+    - word: named
+      type: modifier
+      goto: expression
+    - goto: expression
+
+  datasetClause_AFTER_GENERATE_QUERY:
+    - match: \.
+      pop: true
+    - word: named
+      type: modifier
+      set:
+        - subQuery_END
+        - expression
+    - throw: true
+
+
+  templateQuery:
+    - word: template
+      scope: keyword.operator.word.modifier.template.rqg 
+      set: 
+        - solutionModifier
+        - modifiedWhereClause
+        - bindingClauses
+        - datasetClause
+        - templateClause
+        - queryName
+    - throw: true
+
+  templateClause:
+    - goto: [ closeBrace, templateInnerClause, openBrace ]
+
+  templateInnerClause:
+    - word: before
+      set:
+        - templateInnerClause_AFTER_EXPRESSIONS
+        - tExpressions_IN_TEMPLATE
+        - semicolon
+        - expression
+        - equal
+    - goto: 
+        - templateInnerClause_AFTER_EXPRESSIONS
+        - tExpressions_IN_TEMPLATE
+
+  tExpressions_IN_TEMPLATE: 
+    - match: '(?=;)'
+      pop: true
+    - match: '{{closeBrace_LOOKAHEAD}}'
+      pop: true
+    - match: '{{box_LOOKAHEAD}}'
+      set:
+        - tExpressions_IN_TEMPLATE
+        - box
+    - match: '{{format_LOOKAHEAD}}'
+      set: 
+        - tExpressions_IN_TEMPLATE
+        - tFormat
+    - match: '{{group_LOOKAHEAD}}'
+      set: 
+        - tExpressions_IN_TEMPLATE
+        - group
+    - match: '{{templateQuery_LOOKAHEAD}}'
+      set: 
+        - tExpressions_IN_TEMPLATE
+        - subQuery_END
+        - subTemplateQuery
+    - goto: 
+      - tExpressions_IN_TEMPLATE
+      - primaryExpressionNotBracketted
+
+  tExpressions: 
+    - match: '{{closeBrace_LOOKAHEAD}}'
+      pop: true
+    - include: tExpressionsAtLeastOne
+
+  tExpressionsAtLeastOne: 
+    - match: '{{box_LOOKAHEAD}}'
+      set:
+        - tExpressions
+        - box
+    - match: '{{format_LOOKAHEAD}}'
+      set: 
+        - tExpressions
+        - tFormat
+    - match: '{{group_LOOKAHEAD}}'
+      set: 
+        - tExpressions
+        - group
+    - match: '{{templateQuery_LOOKAHEAD}}'
+      set: 
+        - tExpressions
+        - subQuery_END
+        - subTemplateQuery
+    - goto:
+      - tExpressions
+      - primaryExpressionNotBracketted
+
+  box:
+    - word: box
+      set:
+        - closeBrace
+        - tExpressions 
+        - openBrace
+
+  tFormat:
+    - word: format
+      set: 
+        - closeBrace
+        - tExpressionsAtLeastOne
+        - primaryExpressionNotBracketted
+        - openBrace
+
+  group:
+    - word: group
+      set: 
+        - match: '(?i)distinct(?={{KEYWORD_BOUNDARY}})'
+          scope: keyword.operator.word.modifier.distinct.rqg
+          set:
+            - closeBrace
+            - innerGroup
+            - openBrace
+        - match: '{{PLA_anything}}'
+          set: 
+            - closeBrace
+            - innerGroup
+            - openBrace
+
+  innerGroup:
+    - match: '(?=;)'
+      pop: true
+    - match: '{{closeBrace_LOOKAHEAD}}'
+      pop: true
+    - match: '{{box_LOOKAHEAD}}'
+      set:
+        - groupOption
+        - innerGroup
+        - box
+    - match: '{{format_LOOKAHEAD}}'
+      set: 
+        - groupOption
+        - innerGroup
+        - tFormat
+    - goto:
+      - groupOption
+      - innerGroup
+      - primaryExpressionNotBracketted
+
+  groupOption:
+    - match: ';'
+      scope: punctuation.separator.group.SYNTAX
+      set: groupOption_AFTER_SEMICOLON
+    - include: else_pop 
+
+  groupOption_AFTER_SEMICOLON:
+    - word: separator
+      type: modifier
+      set: groupOption_AFTER_SEPARATOR
+    - throw: true
+
+  groupOption_AFTER_SEPARATOR:
+    - match: '='
+      scope: keyword.operator.assignment.group.SYNTAX
+      set: expression
+    - throw: true
+
+  subTemplateQuery:
+    - word: template
+      scope: keyword.operator.word.modifier.template.rqg 
+      set: 
+        - solutionModifier
+        - modifiedWhereClauseObl
+        - bindingClauses
+        - datasetClause
+        - subTemplateNameOrTemplate
+    - throw: true
+
+  subTemplateNameOrTemplate:
+    - match: '{{uri_LOOKAHEAD}}'
+      set: uriQueryCall
+    - match: '{{iri_LOOKAHEAD}}'
+      set: iriQueryCall
+    - match: '(?=\()'
+      set:
+        - templateClause
+        - varList
+    - match: '(?=\{)'
+      set: templateClause
+    - goto: queryCall
+
+  modifiedWhereClauseObl:
+    - match: '(?i)distinct(?={{KEYWORD_BOUNDARY}})'
+      scope: keyword.operator.word.modifier.distinct.rqg 
+      set: modifiedWhereClauseObl_AFTER_DISTINCT
+    - match: '(?i)reduced(?={{KEYWORD_BOUNDARY}})'
+      scope: keyword.operator.word.modifier.reduced.rqg 
+      set: modifiedWhereClauseObl_AFTER_DISTINCT
+    - match: '{{where_LOOKAHEAD}}'
+      set: modifiedWhereClauseObl_AFTER_DISTINCT
+    - include: else_pop
+
+  modifiedWhereClauseObl_AFTER_DISTINCT:
+    - word: where
+      type: qualifier
+      set: groupGraphPattern
+    - throw: true
+
+
+
+  templateInnerClause_AFTER_EXPRESSIONS:
+    - match: ';'
+      scope: punctuation.separator.semicolon.SYNTAX
+      set: templateInnerClause_SEPARATOR_AFTER
+    - include: else_pop
+
+  templateInnerClause_SEPARATOR_AFTER:
+    - match: '(?i)separator(?={{KEYWORD_BOUNDARY}})'
+      scope: keyword.operator.word.modifier.separator.rqg
+      set:
+        - templateInnerClause_AFTER_SEPARATOR
+        - expression
+        - equal
+    - match: '(?i)after(?={{KEYWORD_BOUNDARY}})'
+      scope: keyword.operator.word.modifier.after.rqg
+      set:
+        - expression
+        - equal
+    - throw: true
+
+  templateInnerClause_AFTER_SEPARATOR:
+    - match: ';'
+      scope: keyword.operator.word.modifier.semicolon.rqg
+      set:
+        - expression
+        - equal
+        - after
+    - include: else_pop
+
+  after:
+    - match: '(?i)after(?={{KEYWORD_BOUNDARY}})'
+      scope: keyword.operator.word.modifier.after.rqg 
+      pop: true
+
+  modifiedWhereClause:
+    - match: '(?i)distinct(?={{KEYWORD_BOUNDARY}})'
+      scope: keyword.operator.word.modifier.distinct.rqg 
+      set: whereClause
+    - match: '(?i)reduced(?={{KEYWORD_BOUNDARY}})'
+      scope: keyword.operator.word.modifier.reduced.rqg 
+      set: whereClause
+    - match: '{{PLA_anything}}'
+      set: whereClause
+
+  function_AFTER_PROLOGUE:
+    - word: function
+      scope: keyword.operator.word.modifier.function.rqg 
+      set: 
+        - solutionModifier
+        - optional_whereClause
+        - bindingClauses 
+        - datasetClause
+        - functionName
+    - throw: true 
+
+  functionName:
+    - meta_content_scope: meta.query-name.SYNTAX
+    - match: '{{iriRef_LOOKAHEAD}}'
+      set:
+        - closeBrace
+        - primaryExpression
+        - openBrace
+        - varList
+        - iriRef
+    - match: '{{prefixedNameNamespace_LOOKAHEAD}}'
+      set:
+        - closeBrace
+        - primaryExpression
+        - openBrace
+        - varList
+        - prefixedName
+    - throw: true
+
+  objectList_AFTER_OBJECT:
+    - match: ','
+      scope: punctuation.separator.object.SYNTAX
+      push: object
+    - match: '{{objectTerminator_LOOKAHEAD}}'
+      pop: true
+    - match: '{{generateQuery_LOOKAHEAD}}'
+      pop: true
+    - match: '{{graphPatternNotTriples_LOOKAHEAD}}'
+      pop: true
+    - match: '{{MAT_word_or_any_one_char}}'
+      scope: invalid.illegal.token.expected.objectList_AFTER_OBJECT.SYNTAX
+
+  object:
+    - match: '{{list_LOOKAHEAD}}'
+      set: 
+        - listNode
+    - goto: graphNode
+
+  listNode:
+    - word: list
+      set:
+        - closeParen
+        - expression
+        - openParen
+
+  namedSelectClause:
+    - meta_content_scope: meta.clause.select.SYNTAX
+    - word: select
+      type: qualifier
+      set: namedSelectClause_AFTER_SELECT
+    - throw: false
+
+  namedSelectClause_AFTER_SELECT:
+    - match: '{{namedNodeFunction_LOOKAHEAD}}'
+      goto: [selectClause_AFTER_SELECT, queryName]
+    - goto: selectClause_AFTER_SELECT
+
+  queryName:
+    - meta_content_scope: meta.query-name.SYNTAX
+    - match: '{{iriRef_LOOKAHEAD}}'
+      set:
+        - varListOpt
+        - iriRef
+    - match: '{{prefixedNameNamespace_LOOKAHEAD}}'
+      set:
+        - varListOpt
+        - prefixedName
+    - include: else_pop
+
+  queryName_TERMINATE:
+    - meta_content_scope: meta.query-name.SYNTAX
+    - match: '{{PLA_anything}}'
+      pop: true
+
+  varList:
+    - open.paren: definition.vars
+      set: [varList_AFTER_VARIABLE, varList_AFTER_BEGIN]
+    - throw: true
+
+  varListOpt:
+    - open.paren: definition.vars
+      set: [varList_AFTER_VARIABLE, varList_AFTER_BEGIN]
+    - include: else_pop
+
+  varList_AFTER_BEGIN:
+    - match: '(?=\))'
+      pop: true
+    - goto: var
+
+  varList_AFTER_VARIABLE:
+    - match: ','
+      scope: punctuation.separator.var.SYNTAX
+      push: var
+    - close.paren: definition.vars
+      pop: true
+    - throw: true
+
+  bindingClauses:
+    - word: iterator
+      type: modifier
+      scope: keyword.operator.word.iterator.bindings.SYNTAX
+      push: [bindingClauses, iterator_AFTER_FUNCTION_CALL, functionCall ]
+    - word: source
+      type: modifier
+      scope: keyword.operator.word.source.bindings.SYNTAX
+      push: [bindingClauses, source_AFTER_NODE, varOrXIri]
+    - word: bind
+      type: modifier
+      scope: keyword.operator.word.bind.bindings.SYNTAX
+      push: [bindingClauses, bind_AFTER_BIND]
+    - include: else_pop
+
+  iterator_AFTER_FUNCTION_CALL:
+    - word: as
+      scope: storage.type.variable.as.iterator.SYNTAX
+      set: [ iterator_AFTER_VAR , var ]
+    - throw: true
+
+  iterator_AFTER_VAR:
+    - match: '{{var_LOOKAHEAD}}'
+      set: [iterator_AFTER_VAR, var]
+    - include: else_pop
+
+  source_AFTER_NODE:
+    - match: '{{accept_LOOKAHEAD}}'
+      scope: keyword.operator.word.accept.source.bindings.SYNTAX
+      set: [ source_AFTER_ACCEPT , varOrNamedNode ]
+    - goto: source_AFTER_ACCEPT
+
+  source_AFTER_ACCEPT:
+    - word: as
+      scope: storage.type.variable.as.iterator.SYNTAX
+      set: var
+    - throw: true
+
+
+  xstringLiteralShortDouble:
+    - meta_include_prototype: false
+    - meta_scope: string.quoted.double.literal.short.SYNTAX
+    - match: '\{'
+      scope: punctuation.definition.string.expression.literal.double.short.SYNTAX
+      set: 
+        - xstringLiteralShortDouble_AFTER_EXPRESSION
+        - expression
+    - include: stringLiteralShortDouble
+
+  xstringLiteralShortDouble_AFTER_EXPRESSION:
+    - match: '\}'
+      scope: punctuation.definition.string.expression.literal.double.short.SYNTAX
+      set: xstringLiteralShortDouble
+    - throw: true
+
+  xstringLiteralShortSingle:
+    - meta_include_prototype: false
+    - meta_scope: string.quoted.single.literal.short.SYNTAX
+    - match: '\{'
+      scope: punctuation.definition.string.expression.literal.single.short.SYNTAX
+      set: 
+        - xstringLiteralShortSingle_AFTER_EXPRESSION
+        - expression
+    - include: stringLiteralShortSingle
+
+  xstringLiteralShortSingle_AFTER_EXPRESSION:
+    - match: '\}'
+      scope: punctuation.definition.string.expression.literal.single.short.SYNTAX
+      set: xstringLiteralShortSingle
+    - throw: true
+
+  xstringLiteralLongDouble:
+    - meta_include_prototype: false
+    - match: '\{'
+      scope: punctuation.definition.string.expression.literal.double.long.SYNTAX
+      set: 
+        - xstringLiteralLongDouble_AFTER_EXPRESSION
+        - expression
+    - include: xstringLiteralLongDouble_AFTER_INNER_QUOTE
+    - match: '"""'
+      scope: punctuation.definition.string.end.literal.double.long.SYNTAX
+      pop: true
+    - match: '""?'
+      scope: string.quoted.double.literal.long.SYNTAX
+    - throw: true
+
+  xstringLiteralLongDouble_AFTER_INNER_QUOTE:
+    - match: '[^"\\]'
+      scope: string.quoted.double.literal.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - match: '{{ECHAR_DOUBLE}}'
+      scope: string.quoted.double.literal.long.SYNTAX constant.character.escape.literal.escape.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - match: '\\'''
+      scope: string.quoted.double.literal.long.SYNTAX constant.character.escape.literal.escape.pointless.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - match: '{{UCHAR}}'
+      scope: string.quoted.double.literal.long.SYNTAX constant.character.escape.literal.unicode.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - match: '\\.'
+      scope: string.quoted.double.literal.long.SYNTAX invalid.illegal.escape.SYNTAX
+      pop: true
+
+  xstringLiteralLongDouble_AFTER_EXPRESSION:
+    - match: '\}'
+      scope: punctuation.definition.string.expression.literal.double.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - throw: true
+
+
+  xstringLiteralLongSingle:
+    - meta_include_prototype: false
+    - match: '\{'
+      scope: punctuation.definition.string.expression.literal.single.long.SYNTAX
+      set: 
+        - xstringLiteralLongSingle_AFTER_EXPRESSION
+        - expression
+    - include: xstringLiteralLongSingle_AFTER_INNER_QUOTE
+    - match: ''''''''
+      scope: punctuation.definition.string.end.literal.single.long.SYNTAX
+      pop: true
+    - match: '''''?'
+      scope: string.quoted.single.literal.long.SYNTAX
+    - throw: true
+
+  xstringLiteralLongSingle_AFTER_INNER_QUOTE:
+    - match: '[^''\\]'
+      scope: string.quoted.single.literal.long.SYNTAX
+      set: xstringLiteralLongSingle
+    - match: '{{ECHAR_SINGLE}}'
+      scope: string.quoted.single.literal.long.SYNTAX constant.character.escape.literal.escape.single.SYNTAX
+      set: xstringLiteralLongSingle
+    - match: '\\"'
+      scope: string.quoted.single.literal.long.SYNTAX constant.character.escape.literal.escape.pointless.single.SYNTAX
+      set: xstringLiteralLongSingle
+    - match: '{{UCHAR}}'
+      scope: string.quoted.single.literal.long.SYNTAX constant.character.escape.literal.unicode.single.SYNTAX
+      set: xstringLiteralLongSingle
+    - match: '\\.'
+      scope: string.quoted.double.literal.long.SYNTAX invalid.illegal.escape.SYNTAX
+      pop: true
+
+  xstringLiteralLongSingle_AFTER_EXPRESSION:
+    - match: '\}'
+      scope: punctuation.definition.string.expression.literal.single.long.SYNTAX
+      set: xstringLiteralLongSingle
+    - throw: true
+
+
+  xiriOrFunction:
+    - goto:
+        - argList
+        - xiri
+
+  xrdfLiteral:
+    - goto: [xrdfLiteral_AFTER_STRING_LITERAL, xstringLiteral]
+
+  xrdfLiteral_AFTER_STRING_LITERAL:
+    - meta_include_prototype: false
+    - include: comment
+    - match: '@'
+      scope: punctuation.separator.language-tag.symbol.SYNTAX
+      set: languageTag
+    - match: '\^\^'
+      scope: punctuation.separator.datatype.symbol.SYNTAX
+      set: xdatatype
+    - include: else_pop
+
+  xstringLiteral:
+    - match: '"""'
+      scope: punctuation.definition.string.begin.literal.double.long.SYNTAX
+      set: xstringLiteralLongDouble
+    - match: '"'
+      scope: punctuation.definition.string.begin.literal.double.short.SYNTAX
+      set: xstringLiteralShortDouble
+    - match: ''''''''
+      scope: punctuation.definition.string.begin.literal.single.long.SYNTAX
+      set: xstringLiteralLongSingle
+    - match: ''''
+      scope: punctuation.definition.string.begin.literal.single.short.SYNTAX
+      set: xstringLiteralShortSingle
+    - throw: true
+
+  xdatatype:
+    - meta_include_prototype: false
+    - match: '{{iriRef_LOOKAHEAD}}'
+      set:
+        - xiri
+      mask: meta.term.role.datatype.SYNTAX
+    - match: '{{prefixedNameNamespace_LOOKAHEAD}}'
+      set:
+        - xiri
+      mask: meta.term.role.datatype.SYNTAX
+    - throw: true
+
+  xiri:
+    - match: '{{prefixedNameNamespace_LOOKAHEAD}}'
+      set: prefixedName
+    - match: '<'
+      scope: punctuation.definition.iri.begin.SYNTAX
+      set: xiri_AFTER_BEGIN
+    - throw: true
+
+  xiri_AFTER_BEGIN:
+    - meta_include_prototype: false
+    - match: '{{IRI_CONTENTS}}'
+      scope: string.unquoted.iri.SYNTAX
+    - match: '{{UCHAR}}'
+      scope: constant.character.escape.iri.SYNTAX
+    - match: '>'
+      scope: punctuation.definition.iri.end.SYNTAX
+      pop: true
+    - match: '\{'
+      scope: punctuation.definition.iri.expression.SYNTAX
+      set: 
+        - xiri_AFTER_EXPRESSION
+        - expression
+    - match: '\s'
+      scope: invalid.illegal.token.expected.iriRef_AFTER_BEGIN.SYNTAX
+    - throw: false
+
+  xiri_AFTER_EXPRESSION:
+    - match: '\}'
+      scope: punctuation.definition.iri.expression.SYNTAX
+      set: xiri_AFTER_BEGIN
+    - throw: true
+
+  varOrXTerm:
+    - match: '{{START_XEXPR}}'
+      set:
+        - closeBrace
+        - expression
+    - match: '{{var_LOOKAHEAD}}'
+      set: var
+    - include: xTerm
+
+  varOrXIri:
+    - include: varOrXExprOpt
+    - include: xiri
+
+  varOrXExpr:
+    - include: varOrXExprOpt
+    - throw: true
+
+  varOrXExprOpt:
+    - match: '{{START_XEXPR}}'
+      set:
+        - closeBrace
+        - expression
+    - match: '{{var_LOOKAHEAD}}'
+      set: var
+
+  xTerm:
+    - match: '{{START_XEXPR}}'
+      set:
+        - closeBrace
+        - expression
+    - match: '{{prefixedNameNamespace_LOOKAHEAD}}'
+      set: prefixedName
+    - match: <
+      scope: punctuation.definition.iri.begin.rqg
+      set: xiri_AFTER_BEGIN
+    - words: ['true', 'false']
+      scope: constant.language.boolean.WORD.SYNTAX
+      pop: true
+    - include: numericLiteral
+    - switch:
+        - blankNode
+        - openParen: nil
+    - include: xrdfLiteral
+
+  xNode:
+    - match: '{{START_XEXPR}}'
+      set:
+        - closeBrace
+        - expression
+    - match: '{{prefixedNameNamespace_LOOKAHEAD}}'
+      set: prefixedName
+    - match: '<'
+      scope: punctuation.definition.iri.begin.SYNTAX
+      set: xiri_AFTER_BEGIN
+    - include: xrdfLiteral
+
+  xExpr:
+    - match: '{{START_XEXPR}}'
+      set:
+        - closeBrace
+        - expression
+    - throw: true
+
+  primaryExpression:
+    - match: '{{var_LOOKAHEAD}}'
+      set: var
+    - match: '{{openParen_LOOKAHEAD}}'
+      set: brackettedExpression
+    - match: '{{templateQuery_LOOKAHEAD}}'
+      set: 
+        - subQuery_END
+        - subTemplateQuery
+    - include: builtInCall
+    - include: xliteral
+    - include: xiriOrFunction
+
+  primaryExpressionNotBracketted:
+    - match: '{{var_LOOKAHEAD}}'
+      set: var
+    - match: '{{templateQuery_LOOKAHEAD}}'
+      set: 
+        - subQuery_END
+        - subTemplateQuery
+    - include: builtInCall
+    - include: xliteral
+    - include: xiriOrFunction
+
+  xliteral:
+    - match: '{{stringLiteral_LOOKAHEAD}}'
+      set: xrdfLiteral
+    - words: ['true', 'false']
+      scope: constant.language.boolean.WORD.SYNTAX
+      pop: true
+    - include: numericLiteral
+
+  graphGraphPattern_AFTER_GRAPH:
+    - goto: [groupGraphPattern, varOrXIri]
+
+  serviceGraphPattern_AFTER_SILENT:
+    - goto: [groupGraphPattern, varOrXIri]
+
+  triplesSameSubject:
+    - switch:
+        - hollowAnonymousBlankNode: [propertyListNotEmpty, hollowAnonymousBlankNode]
+        - anonymousBlankNode: anonymousBlankNode_LATENT_PL_PLNE
+        - varOrTerm: [propertyListNotEmpty_REQUIRED, varOrXTerm]
+        - triplesNode: [propertyList, triplesNode]
+    - throw: true
+
+  verb:
+    - match: '{{a_LOOKAHEAD}}'
+      set: a
+    - goto: varOrXTerm
+
+  triplesSameSubjectPath:
+    - switch:
+        - hollowAnonymousBlankNode: [propertyListPathNotEmpty, hollowAnonymousBlankNode]
+        - anonymousBlankNode: anonymousBlankNode_LATENT_PLP_PLPNE
+        - varOrTerm: [propertyListPathNotEmpty, varOrXTerm]
+        - triplesNode: [propertyListPath, triplesNodePath]
+    - throw: true
+
+  verbPathOrSimple:
+    - match: '{{path_LOOKAHEAD}}'
+      set: path
+    - match: '{{var_LOOKAHEAD}}'
+      set: varOrXExpr
+    - throw: true
+
+  pathPrimary:
+    - meta_include_prototype: false
+    - match: '!'
+      scope: keyword.operator.path.logical.not.SYNTAX meta.path.negated.SYNTAX
+      set: pathNegatedPropertySet
+      mask: meta.path.negated.SYNTAX
+    - open.paren: section.path-group.sub
+      set: [pathPrimary_GROUP_TERMINATE, path]
+    - match: '{{a_LOOKAHEAD}}'
+      set: a
+    - goto: xiri
+
+  pathOneInPropertySet_AFTER_INVERSE: 
+    - meta_include_prototype: false
+    - match: '{{a_LOOKAHEAD}}'
+      set: a
+    - goto: xiri
+ 
+  graphNode:
+    - match: '{{hollowAnonymousBlankNode_LOOKAHEAD}}'
+      set: hollowAnonymousBlankNode
+    - match: '{{anonymousBlankNode_LOOKAHEAD}}'
+      set: anonymousBlankNode_LATENT
+    - match: '{{triplesNode_LOOKAHEAD}}'
+      set: triplesNode
+    - goto: varOrXTerm
+
+  graphNodePath:
+    - match: '{{hollowAnonymousBlankNode_LOOKAHEAD}}'
+      set: hollowAnonymousBlankNode
+    - match: '{{anonymousBlankNode_LOOKAHEAD}}'
+      set: anonymousBlankNodePath_LATENT
+    - match: '{{triplesNode_LOOKAHEAD}}'
+      set: triplesNodePath
+    - goto: varOrXTerm

@@ -140,7 +140,7 @@ module.exports = {
 						echo $(dirname $@)/assets/
 						echo $(dirname $@)
 						echo $(basename $@)
-					  cp src/sparql-generate/* $(dirname $@)/assets/
+					    cp src/sparql-generate/* $(dirname $@)/assets/
 						cd $(dirname $@)/assets/
 						zip -r $(basename $@) *
 						mv $(basename $@) ..
@@ -165,18 +165,18 @@ module.exports = {
 							`,
 						}),
 
-						[`${s_syntax}.sublime-settings`]: () => ({
-							deps: [
-								'src/supplementals/settings.jmacs.sublime-settings',
-							],
+						// [`${s_syntax}.sublime-settings`]: () => ({
+						// 	deps: [
+						// 		'src/supplementals/settings.jmacs.sublime-settings',
+						// 	],
 
-							run: /* syntax: bash */ `
-								npx jmacs -g '${/* eslint-disable indent */JSON.stringify({
-									PACKAGE_PATH: p_package,
-									COLOR_SCHEME: A_COLOR_SCHEMES[0],
-								})}' $1 > $@
-							`,
-						}),
+						// 	run: /* syntax: bash */ `
+						// 		npx jmacs -g '${/* eslint-disable indent */JSON.stringify({
+						// 			PACKAGE_PATH: p_package,
+						// 			COLOR_SCHEME: A_COLOR_SCHEMES[0],
+						// 		})}' $1 > $@
+						// 	`,
+						// }),
 
 						...G_SYNTAXES[s_syntax].supplementals,
 					})],
@@ -192,18 +192,18 @@ module.exports = {
 						`,
 					}),
 
-					':color_scheme.sublime-color-scheme': h => ({
-						deps: [
-							'src/main/color-scheme.js',
-							`src/color-schemes/${h.color_scheme}.js`,
-							'src/color-schemes/base/dark.js',
-							'src/color-schemes/base/light.js',
-						],
+					// ':color_scheme.sublime-color-scheme': h => ({
+					// 	deps: [
+					// 		'src/main/color-scheme.js',
+					// 		`src/color-schemes/${h.color_scheme}.js`,
+					// 		'src/color-schemes/base/dark.js',
+					// 		'src/color-schemes/base/light.js',
+					// 	],
 
-						run: /* syntax: bash */ `
-							node $1 ${h.color_scheme} > $@
-						`,
-					}),
+					// 	run: /* syntax: bash */ `
+					// 		node $1 ${h.color_scheme} > $@
+					// 	`,
+					// }),
 
 					'linked-data.:preference.tmPreferences': h => ({
 						deps: [

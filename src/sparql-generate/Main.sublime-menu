@@ -44,6 +44,15 @@
                         "caption": "Team",
                         "command": "sparql_generate_doc", "args": { "url": "https://ci.mines-stetienne.fr/sparql-generate/team-list.html" }
                     },
+                    {
+                        "caption": "Navigate through your code. Service adapted from (SuperNavigator: Super Navigate)",
+                        "command": "super_navigate"
+                    },
+                    {
+                        "caption": "Super Navigate in all tabs. Service adapted from (SuperNavigator: Super Navigate)",
+                        "command": "super_navigate",
+                        "args": { "allTabs": true }
+                    }
                 ]
             }
         ]

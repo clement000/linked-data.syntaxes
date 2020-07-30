@@ -127,8 +127,8 @@ contexts:
     - alone
     - meta_scope: meta.prologue.SYNTAX
     - switch.push:
-        - baseDeclaration
-        - prefixDeclaration
+       - baseDeclaration
+       - prefixDeclaration
     - match: '(#(\s*)(@unit)(\s*))'
       captures:
         1: comment.line.SYNTAX
