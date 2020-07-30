@@ -1,0 +1,1522 @@
+%YAML 1.2
+---
+name: SPARQL
+file_extensions:
+  - rq
+scope: source.rq
+extends: terse.syntax-source
+
+
+lookaheads:
+
+
+  numericLiteralPositive: '\+\.?[0-9]'
+  numericLiteralNegative: '\-\.?[0-9]'
+
+  node: [namedNode, blankNode]
+
+  namedNodeOrVar: [namedNode, var]
+  verb: [namedNodeOrVar, a]
+
+  triplesSameSubject: [varOrTerm, triplesNode]
+  triplesSameSubjectPath: [var, node, triplesNode]
+
+  term: [node, literal]
+
+  unitDirective: '#\s*@unit{{KEYWORD_BOUNDARY}}'
+
+  path: >-
+    (?x)
+      [!(^]
+      |{{namedNode_LOOKAHEAD}}
+      |a{{KEYWORD_BOUNDARY}}
+
+
+lookaheads.i:
+
+  aggregateFunction: >-
+    (?x)
+      (?:
+        count
+        |sum
+        |min
+        |max
+        |avg
+        |sample
+        |group_concat
+      )\s*\(
+      |{{functionCall_LOOKAHEAD}}
+
+  builtInCall: >-
+    (?x)
+      {{aggregateFunction_LOOKAHEAD}}
+      |(?:
+        str
+        |lang(?:matches)?
+        |datatype
+        |bound
+        |[iu]ri
+        |bnode
+        |rand
+        |abs
+        |ceil
+        |floor
+        |round
+        |concat
+        |substr
+        |replace
+        |[ul]case
+        |encode_for_uri
+        |contains
+        |str(?:len|starts|ends|before|after|uuid|lang|dt)
+        |year
+        |month
+        |day
+        |hours
+        |minutes
+        |seconds
+        |timezone
+        |tz
+        |now
+        |md5
+        |sha(?:1|256|384|512)
+        |coalesce
+        |if
+        |sameTerm
+        |is(?:[iu]ri|blank|literal|numeric)
+        |regex
+      )\s*\(
+      |(?:not|exists){{KEYWORD_BOUNDARY}}
+
+
+variables:
+
+  varNameStart: '(?:{{PN_CHARS_U}}|[0-9])'
+  varName: '{{varNameStart}}(?:{{varNameStart}}|\x{00b7}|\x{0300}-\x{036f}|\x{203f}-\x{2040})*'
+
+
+contexts:
+  prototype:
+    - match: '{{unitDirective_LOOKAHEAD}}'
+      pop: true
+    - include: whitespace
+    - include: comment
+
+  main:
+    - alone
+    - match: '(#(\s*)(@prologue)(\s*))'
+      captures:
+        1: comment.line.SYNTAX
+        2: meta.whitespace.SYNTAX
+        3: meta.directive.prologue.SYNTAX
+        4: meta.whitespace.SYNTAX
+      push: line_comment
+    - include: prototype
+    - goto.push: query
+
+  query:
+    - alone
+    - lookaheads:
+      - selectQuery
+      - constructQuery
+      - describeQuery
+      - askQuery
+    - goto: [unit_AFTER_QUERY_UPDATE, unit_AFTER_PROLOGUE, prologue]
+
+  prologue:
+    - alone
+    - meta_scope: meta.prologue.SYNTAX
+    - switch.push:
+        - baseDeclaration
+        - prefixDeclaration
+    - match: '(#(\s*)(@unit)(\s*))'
+      captures:
+        1: comment.line.SYNTAX
+        2: meta.whitespace.SYNTAX
+        3: meta.directive.unit.SYNTAX
+        4: meta.whitespace.SYNTAX
+      set: line_comment
+    - include: prototype
+    - bail
+
+  baseDeclaration:
+    - include: baseDeclarationSparql
+
+  prefixDeclaration:
+    - include: prefixDeclarationSparql
+
+  unit_AFTER_PROLOGUE:
+    - match: '(#(\s*)(@unit)(\s*))'
+      captures:
+        1: comment.line.SYNTAX
+        2: meta.whitespace.SYNTAX
+        3: meta.directive.prologue.SYNTAX
+        4: meta.whitespace.SYNTAX
+      set: [unit_AFTER_PROLOGUE, line_comment]
+    - switch:
+        - query: [valuesClause, query_AFTER_PROLOGUE]
+        - update_AFTER_PROLOGUE
+    - retry
+
+  unit_AFTER_QUERY_UPDATE:
+    - alone
+    - match: '(#(\s*)(@unit)(\s*))'
+      captures:
+        1: comment.line.SYNTAX
+        2: meta.whitespace.SYNTAX
+        3: meta.directive.prologue.SYNTAX
+        4: meta.whitespace.SYNTAX
+      set: [unit_AFTER_PROLOGUE, line_comment]
+    - include: prototype
+    - bail
+
+  query_AFTER_PROLOGUE:
+    - switch:
+        - selectQuery
+        - constructQuery
+        - describeQuery
+        - askQuery
+
+  selectQuery:
+    - lookahead.i: 'select{{KEYWORD_BOUNDARY}}'
+    - goto: [solutionModifier, whereClause, datasetClause, selectClause]
+
+  subSelect:
+    - goto: [valuesClause, solutionModifier, whereClause, selectClause]
+
+  selectClause:
+    - meta_content_scope: meta.clause.select.SYNTAX
+    - word: select
+      type: qualifier
+      set: selectClause_AFTER_SELECT
+    - retry
+
+  selectClause_AFTER_SELECT:
+    - word: distinct
+      scope: storage.modifier.distinct.SYNTAX
+      set: selectClause_AFTER_SELECT_MODIFIER
+    - word: reduced
+      scope: storage.modifier.reduced.SYNTAX
+      set: selectClause_AFTER_SELECT_MODIFIER
+    - goto: selectClause_AFTER_SELECT_MODIFIER
+
+  selectClause_AFTER_SELECT_MODIFIER:
+    - match: '\*'
+      scope: keyword.operator.star.select-clause.SYNTAX
+      pop: true
+    - goto: selectClause_AFTER_NOT_STAR
+
+  selectClause_AFTER_NOT_STAR:
+    - switch.push:
+        - selectClauseExpressionBinding
+        - var
+    - bail
+
+  selectClauseExpressionBinding:
+    - switch:
+        - selectClauseExpressionBinding_AFTER_META
+      mask: meta.group.expression-binding.select-clause.SYNTAX
+
+  selectClauseExpressionBinding_AFTER_META:
+    - open.paren: definition.expression
+      set: [selectClauseExpressionBinding_TERMINATE, selectClauseExpressionBinding_AFTER_EXPRESSION, expression]
+
+  selectClauseExpressionBinding_AFTER_EXPRESSION:
+    - word: as
+      scope: storage.type.variable.as.select-clause.SYNTAX
+      set: var
+    - retry
+
+  selectClauseExpressionBinding_TERMINATE:
+    - close.paren: definition.expression
+      pop: true
+
+  constructQuery:
+    - word: construct
+      type: qualifier
+      set: constructQuery_AFTER_CONSTRUCT
+
+  constructQuery_AFTER_CONSTRUCT:
+    - switch:
+        - constructTemplate: [solutionModifier, whereClause, datasetClause, constructTemplate_AFTER_TRIPLES, constructTemplate]
+        - datasetClause: [constructQuery_ALTERNATE_AFTER_DATASET_CLAUSE, datasetClause]
+
+  constructQuery_ALTERNATE_AFTER_DATASET_CLAUSE:
+    - word: where
+      type: qualifier
+      set: constructQuery_ALTERNATE_AFTER_WHERE
+
+  constructQuery_ALTERNATE_AFTER_WHERE:
+    - open.brace: section.triples
+      set: [constructQuery_ALTERNATE_AFTER_TRIPLES_TEMPLATE, triplesTemplate]
+
+  constructQuery_ALTERNATE_AFTER_TRIPLES_TEMPLATE:
+    - close.brace: section.triples
+      set: solutionModifier
+
+  describeQuery:
+    - word: describe
+      type: qualifier
+      set: [solutionModifier, whereClause_OPTIONAL, datasetClause, describeQuery_AFTER_DESCRIBE]
+
+  describeQuery_AFTER_DESCRIBE:
+    - match: '\*'
+      scope: keyword.operator.star.describe.SYNTAX
+      pop: true
+    - goto: describeQuery_TARGET+
+
+  describeQuery_TARGET:
+    - switch:
+        - namedNode
+        - var
+
+  askQuery:
+    - word: ask
+      type: qualifier
+      set: [solutionModifier, whereClause, datasetClause]
+
+  datasetClause:
+    - meta_content_scope: meta.clause.dataset.SYNTAX
+    - word: from
+      type: modifier
+      push: datasetClause_AFTER_FROM
+    - bail
+
+  datasetClause_AFTER_FROM:
+    - word: named
+      type: modifier
+      set: namedNode
+      mask: meta.term.role.dataset.from-named.SYNTAX
+    - goto: [namedNode]
+      mask: meta.term.role.dataset.from-default.SYNTAX
+
+  whereClause_OPTIONAL:
+    - match: '(?=\{|(?i:where{{KEYWORD_BOUNDARY}}))'
+      set: whereClause
+    - bail
+
+  whereClause:
+    - word: where
+      type: qualifier
+      set: groupGraphPattern
+    - goto: groupGraphPattern
+
+  solutionModifier:
+    - goto: [limitOffsetClauses, orderClause, havingClause, groupClause]
+
+  groupClause:
+    - word: group
+      set: groupClause_AFTER_GROUP
+    - bail
+
+  groupClause_AFTER_GROUP:
+    - word: by
+      set: groupCondition+
+
+  groupCondition:
+    - open.paren: definition.arguments
+      set: [groupCondition_TERMINATE_BINDING, groupCondition_AFTER_EXPRESSION, expression]
+    - switch:
+        - var
+        - functionCall
+        - builtInCall
+
+  groupCondition_AFTER_EXPRESSION:
+    - word: as
+      type: modifier
+      set: var
+    - bail
+
+  groupCondition_TERMINATE_BINDING:
+    - close.paren: definition.arguments
+      pop: true
+
+  havingClause:
+    - word: having
+      type: modifier
+      set: [constraint+]
+    - bail
+
+  orderClause:
+    - word: order
+      type: modifier
+      set: orderClause_AFTER_ORDER
+    - bail
+
+  orderClause_AFTER_ORDER:
+    - word: by
+      type: modifier
+      set: orderCondition+
+
+  orderCondition:
+    - word: asc
+      scope: support.function.built-in.sort.asc.SYNTAX
+      set: brackettedExpression
+    - word: desc
+      scope: support.function.built-in.sort.desc.SYNTAX
+      set: brackettedExpression
+    - switch:
+        - constraint: constraint^
+        - var
+
+  limitOffsetClauses:
+    - switch:
+        - limitClause: [offsetClause?, limitClause^]
+        - offsetClause: [limitClause?, offsetClause^]
+    - bail
+
+  limitClause:
+    - word: limit
+      type: modifier
+      set: integer
+
+  offsetClause:
+    - word: offset
+      type: modifier
+      set: integer
+
+  valuesClause:
+    - word: values
+      type: qualifier
+      set: dataBlock
+    - bail
+
+  update:
+    - goto: [update_AFTER_PROLOGUE, prologue]
+
+  update_AFTER_PROLOGUE:
+    - switch:
+        - load: [update_AFTER_UPDATE_1, load]
+        - clear: [update_AFTER_UPDATE_1, clear]
+        - drop: [update_AFTER_UPDATE_1, drop]
+        - add: [update_AFTER_UPDATE_1, add]
+        - move: [update_AFTER_UPDATE_1, move]
+        - copy: [update_AFTER_UPDATE_1, copy]
+        - create: [update_AFTER_UPDATE_1, create]
+        - insert: [update_AFTER_UPDATE_1, insert]
+        - delete: [update_AFTER_UPDATE_1, delete]
+        - modify: [update_AFTER_UPDATE_1, modify]
+
+  update_AFTER_UPDATE_1:
+    - match: ';'
+      scope: punctuation.terminator.update.SYNTAX
+      set: update
+    - bail
+
+  load:
+    - word: load
+      type: qualifier
+      set: [load_AFTER_NAMED_NODE, namedNode, silent_OPTIONAL]
+
+  load_AFTER_NAMED_NODE:
+    - word: into
+      type: modifier
+      set: graphRef
+    - bail
+
+  silent_OPTIONAL:
+    - word: silent
+      type: modifier
+      pop: true
+    - bail
+
+  clear:
+    - word: clear
+      type: qualifier
+      set: [graphRefAll, silent_OPTIONAL]
+
+  drop:
+    - word: drop
+      type: qualifier
+      set: [graphRefAll, silent_OPTIONAL]
+
+  add:
+    - word: add
+      type: qualifier
+      set: addMoveCopy_AFTER_ACTION
+
+  move:
+    - word: move
+      type: qualifier
+      set: addMoveCopy_AFTER_ACTION
+
+  addMoveCopy_AFTER_ACTION:
+    - goto: [addMoveCopy_AFTER_GRAPH_OR_DEFAULT, graphOrDefault]
+
+  addMoveCopy_AFTER_GRAPH_OR_DEFAULT:
+    - word: to
+      type: qualifier
+      set: graphOrDefault
+
+  copy:
+    - word: copy
+      type: qualifier
+      set: addMoveCopy_AFTER_ACTION
+
+  create:
+    - word: create
+      type: qualifier
+      set: [graphRef, silent_OPTIONAL]
+
+  insert:
+    - word: insert
+      type: qualifier
+      set: insert_AFTER_INSERT
+
+  insert_AFTER_INSERT:
+    - include: insertDeleteData_AFTER_ACTION
+    - switch:
+        - quadPatternData: [modify_AFTER_INSERT_CLAUSE, quadPatternData]
+
+  insertDeleteData_AFTER_ACTION:
+    - word: data
+      type: qualifier
+      set: quadPatternData
+
+  delete:
+    - word: delete
+      type: qualifier
+      set: delete_AFTER_DELETE
+
+  delete_AFTER_DELETE:
+    - include: insertDeleteData_AFTER_ACTION
+    - word: where
+      type: modifier
+      set: quadPatternData
+    - switch:
+        - quadPatternData: [modify_AFTER_INSERT_CLAUSE, insertClause_OPTIONAL, quadPatternData]
+
+  modify:
+    - word: with
+      type: modifier
+      set: [modify_AFTER_NAMED_NODE, namedNode]
+    - goto: modify_AFTER_NAMED_NODE
+
+  modify_AFTER_NAMED_NODE:
+    - switch:
+        - delete: [modify_AFTER_INSERT_CLAUSE, insertClause_OPTIONAL, deleteClause]
+        - insert: [modify_AFTER_INSERT_CLAUSE, insertClause]
+    - goto: modify_AFTER_INSERT_CLAUSE
+
+  modify_AFTER_INSERT_CLAUSE:
+    - goto: [modify_AFTER_USING_CLAUSE, usingClause]
+
+  modify_AFTER_USING_CLAUSE:
+    - word: where
+      type: modifier
+      set: groupGraphPattern
+
+  deleteClause:
+    - word: delete
+      type: qualifier
+      set: quadPatternData
+
+  insertClause_OPTIONAL:
+    - switch:
+        - insertClause
+    - bail
+
+  insertClause:
+    - word: insert
+      type: qualifier
+      set: quadPatternData
+
+  usingClause:
+    - word: using
+      type: qualifier
+      push: usingClause_AFTER_USING
+    - bail
+
+  usingClause_AFTER_USING:
+    - word: named
+      type: qualifier
+      set: namedNode
+    - switch:
+        - namedNode
+
+  graphOrDefault:
+    - word: default
+      scope: support.constant.graph.default.SYNTAX
+      pop: true
+    - word: graph
+      type: qualifier
+      set: namedNode
+    - switch:
+        - namedNode
+
+  graphRef:
+    - word: graph
+      type: modifier
+      set: namedNode
+
+  graphRefAll:
+    - switch:
+        - graphRef
+    - word: default
+      scope: support.constant.graph.default.SYNTAX
+      pop: true
+    - word: named
+      scope: support.constant.graph.named.SYNTAX
+      pop: true
+    - word: all
+      scope: support.constant.graph.all.SYNTAX
+      pop: true
+
+  quadPatternData:
+    - open.brace: section.quads
+      set: [quadPatternData_AFTER_QUADS, quads]
+
+  quadPatternData_AFTER_QUADS:
+    - close.brace: section.quads
+      pop: true
+
+  quads:
+    - goto: [quads_AFTER_TRIPLES_TEMPLATE, triplesTemplate]
+
+  quads_AFTER_TRIPLES_TEMPLATE:
+    - switch:
+        - quadsNotTriples: [quads_AFTER_QUADS_NOT_TRIPLES, quadsNotTriples]
+    - bail
+
+  quads_AFTER_QUADS_NOT_TRIPLES:
+    - match: '\.'
+      scope: punctuation.terminator.quad.SYNTAX
+      set: triplesTemplate
+    - goto: triplesTemplate
+
+  quadsNotTriples:
+    - word: graph
+      type: modifier
+      set: [quadsNotTriples_AFTER_VAR_OR_NAMED_NODE, varOrNamedNode]
+
+  quadsNotTriples_AFTER_VAR_OR_NAMED_NODE:
+    - open.brace: section.quads
+      set: [quadsNotTriples_AFTER_TRIPLES_TEMPLATE, triplesTemplate]
+
+  quadsNotTriples_AFTER_TRIPLES_TEMPLATE:
+    - close.brace: section.quads
+      pop: true
+
+  triplesTemplate:
+    - switch:
+        - triplesSameSubject: [triplesTemplate_AFTER_TRIPLES_SAME_SUBJECT, triplesSameSubject]
+    - bail
+
+  triplesTemplate_AFTER_TRIPLES_SAME_SUBJECT:
+    - match: '\.'
+      scope: punctuation.terminator.triple.SYNTAX
+      set: triplesTemplate
+    - bail
+
+  groupGraphPattern:
+    - meta_content_scope: meta.block.pattern.graph.group.SYNTAX
+    - open.brace: section.group
+      set: groupGraphPattern_AFTER_BEGIN
+
+  groupGraphPattern_AFTER_BEGIN:
+    - switch:
+        - selectQuery: [groupGraphPattern_TERMINATE, subSelect]
+    - goto: [groupGraphPattern_TERMINATE, groupGraphPatternSub]
+
+  groupGraphPatternSub:
+    - goto: [groupGraphPatternSub_AFTER_TRIPLES_BLOCK, triplesBlock]
+
+  groupGraphPatternSub_AFTER_TRIPLES_BLOCK:
+    - switch:
+        - graphPatternNotTriples:
+          - groupGraphPatternSub_AFTER_TRIPLES_BLOCK
+          - triplesBlock
+          - groupGraphPatternSub_AFTER_GRAPH_PATTERN_NOT_TRIPLES
+          - graphPatternNotTriples
+    - bail
+
+  groupGraphPatternSub_AFTER_GRAPH_PATTERN_NOT_TRIPLES:
+    - match: '\.'
+      scope: punctuation.terminator.graph-pattern.SYNTAX
+      pop: true
+    - bail
+
+  groupGraphPattern_TERMINATE:
+    - close.brace: section.group
+      pop: true
+    - retry
+
+  triplesBlock:
+    - switch:
+        - triplesSameSubjectPath: [triplesBlock_AFTER_TRIPLES_SAME_SUBJECT_PATH, triplesSameSubjectPath]
+    - bail
+
+  triplesBlock_AFTER_TRIPLES_SAME_SUBJECT_PATH:
+    - match: '\.'
+      scope: punctuation.terminator.triple.SYNTAX
+      set: triplesBlock
+    - bail
+
+  graphPatternNotTriples:
+    - switch:
+        - groupGraphPattern: groupOrUnionGraphPattern
+    - words:
+        - optional
+        - minus
+      set: groupGraphPattern
+      mask: meta.graph-pattern.WORD.SYNTAX
+    - word: graph
+      type: modifier
+      set: graphGraphPattern_AFTER_GRAPH
+    - word: service
+      type: qualifier
+      set: serviceGraphPattern_AFTER_SERVICE
+    - word: filter
+      type: modifier
+      set: filter_AFTER_FILTER
+    - word: bind
+      type: modifier
+      set: bind_AFTER_BIND
+    - word: values
+      type: qualifier
+      set: dataBlock
+
+  graphGraphPattern_AFTER_GRAPH:
+    - switch:
+        - var: [groupGraphPattern, var]
+        - namedNode: [groupGraphPattern, namedNodeGraphPattern]
+
+  namedNodeGraphPattern:
+    - goto: [namedNode]
+      mask: meta.term.role.graph.pattern.SYNTAX
+
+  serviceGraphPattern_AFTER_SERVICE:
+    - word: silent
+      type: modifier
+      set: serviceGraphPattern_AFTER_SILENT
+    - goto: serviceGraphPattern_AFTER_SILENT
+
+  serviceGraphPattern_AFTER_SILENT:
+    - goto: [groupGraphPattern, varOrNamedNode]
+
+  bind_AFTER_BIND:
+    - open.paren: section.bind
+      set: [bind_AFTER_EXPRESSION, expression]
+
+  bind_AFTER_EXPRESSION:
+    - word: as
+      scope: storage.type.variable.as.select-clause.SYNTAX
+      set: [bind_AFTER_VAR, var]
+
+  bind_AFTER_VAR:
+    - close.paren: section.bind
+      pop: true
+
+  dataBlock:
+    - switch:
+        - inlineDataOneVar
+        - inlineDataFull
+
+  inlineDataOneVar:
+    - lookaheads: [var]
+    - goto: [inlineDataOneVar_AFTER_VAR, var]
+
+  inlineDataOneVar_AFTER_VAR:
+    - open.brace: section.block.values-data.one-var
+      set: [inlineDataOneVar_AFTER_DATA_BLOCK_VALUE, dataBlockValue]
+
+  inlineDataOneVar_AFTER_DATA_BLOCK_VALUE:
+    - close.brace: section.block.values-data.one-var
+      pop: true
+
+  inlineDataFull:
+    - open.paren: section.inline-data-vars
+      set: inlineDataFull_AFTER_BEGIN
+
+  inlineDataFull_AFTER_BEGIN:
+    - close.paren: section.inline-data-vars
+      set: inlineDataFull_AFTER_VARS
+    - switch.push:
+        - var
+
+  inlineDataFull_AFTER_VARS:
+    - open.brace: section.block.values-data.full
+      set: inlineDataFull_AFTER_BRACE
+
+  inlineDataFull_AFTER_BRACE:
+    - open.paren: section.data
+      set: [inlineDataFull_AFTER_DATA_BLOCK_VALUE, dataBlockValue]
+    - close.brace: section.block.values-data.full
+      pop: true
+
+  inlineDataFull_AFTER_DATA_BLOCK_VALUE:
+    - close.paren: section.data
+      set: inlineDataFull_AFTER_BRACE
+
+  dataBlockValue:
+    - word: undef
+      scope: support.constant.undef.SYNTAX
+    - switch.push:
+        - namedNode
+        - literal
+    - bail
+
+  groupOrUnionGraphPattern:
+    - goto: [groupOrUnionGraphPattern_MORE, groupGraphPattern]
+
+  groupOrUnionGraphPattern_MORE:
+    - word: union
+      type: qualifier
+      set: groupOrUnionGraphPattern
+    - bail
+
+  filter_AFTER_FILTER:
+    - switch:
+        - brackettedExpression
+        - functionCall
+        - builtInCall
+
+  constraint:
+    - switch:
+        - brackettedExpression
+        - builtInCall
+        - functionCall
+
+  functionCall:
+    - lookahead: |-
+        (?x)
+          (?:
+            (?:<{{IRI_CONTENTS}}>)
+            |(?:{{PN_PREFIX}}?:{{PN_LOCAL}})
+          )\s*\(
+    - meta_content_scope: meta.function-call.SYNTAX
+    - goto: [functionCall_TERMINATE, argList, namedNodeFunctionCall]
+
+  namedNodeFunctionCall:
+    - goto: [namedNode]
+      mask: meta.term.role.function-call.SYNTAX
+
+  functionCall_TERMINATE:
+    - meta_content_scope: meta.function-call.SYNTAX
+    - bail
+
+  argList:
+    - open.paren: definition.arguments
+      set: [argList_AFTER_ARGUMENT, argList_AFTER_BEGIN]
+    - bail
+
+  argList_AFTER_BEGIN:
+    - match: '(?=\))'
+      pop: true
+    - word: distinct
+      scope: keyword.operator.word.modifier.distinct.function-call.SYNTAX
+      set: expression
+    - goto: expression
+
+  argList_AFTER_ARGUMENT:
+    - match: ','
+      scope: punctuation.separator.argument.SYNTAX
+      push: expression
+    - close.paren: definition.arguments
+      pop: true
+
+  expressionList:
+    - open.paren: definition.expression
+      set: expressionList_AFTER_BEGIN
+
+  expressionList_AFTER_BEGIN:
+    - close.paren: definition.expression
+      pop: true
+    - goto: [expressionList_AFTER_EXPRESSION, expression]
+
+  expressionList_AFTER_EXPRESSION:
+    - match: ','
+      scope: punctuation.separator.expression.SYNTAX
+      push: expression
+    - close.paren: definition.expression
+      pop: true
+
+  constructTemplate:
+    - open.brace: section.triples
+      set: constructTriples_OPTIONAL
+
+  constructTemplate_AFTER_TRIPLES:
+    - close.brace: section.triples
+      pop: true
+
+  constructTriples_OPTIONAL:
+    - switch:
+        - triplesSameSubject: [constructTriples_AFTER_TRIPLES_SAME_SUBJECT, triplesSameSubject]
+    - bail
+
+  constructTriples_AFTER_TRIPLES_SAME_SUBJECT:
+    - match: '\.'
+      scope: punctuation.terminator.triple.SYNTAX
+      set: constructTriples_OPTIONAL
+    - bail
+
+  triplesSameSubject:
+    - switch:
+        - hollowAnonymousBlankNode: [propertyListNotEmpty, hollowAnonymousBlankNode]
+        - anonymousBlankNode: anonymousBlankNode_LATENT_PL_PLNE
+        - varOrTerm: [propertyListNotEmpty_REQUIRED, varOrTerm]
+        - triplesNode: [propertyList, triplesNode]
+
+  anonymousBlankNode_LATENT:
+    - open.bracket: definition.blank-node-property-list
+      set: anonymousBlankNode_LATENT_AFTER_BEGIN
+
+  anonymousBlankNode_LATENT_AFTER_BEGIN:
+    - close.bracket: definition.anonymous-blank-node.hack
+      pop: true
+    - goto: [blankNodePropertyList_TERMINATE, propertyListNotEmpty]
+
+  anonymousBlankNodePath_LATENT:
+    - open.bracket: definition.blank-node-property-list
+      set: anonymousBlankNodePath_LATENT_AFTER_BEGIN
+
+  anonymousBlankNodePath_LATENT_AFTER_BEGIN:
+    - close.bracket: definition.anonymous-blank-node.hack
+      pop: true
+    - goto: [blankNodePropertyList_TERMINATE, propertyListPathNotEmpty]
+
+  blankNodePropertyList_LATENT:
+    - open.bracket: definition.blank-node-property-list
+      set: blankNodePropertyList_LATENT_AFTER_BEGIN
+
+  blankNodePropertyList_LATENT_AFTER_BEGIN:
+    - close.bracket: definition.anonymous-blank-node.hack
+
+      set: [blankNodePropertyList_TERMINATE, propertyListNotEmpty]
+
+  anonymousBlankNode_LATENT_PL_PLNE:
+    - open.bracket: definition.blank-node-property-list
+      set: anonymousBlankNode_LATENT_PL_PLNE_AFTER_BEGIN
+
+  anonymousBlankNode_LATENT_PL_PLNE_AFTER_BEGIN:
+    - close.bracket: definition.anonymous-blank-node.hack
+      set: propertyListNotEmpty
+    - goto: [propertyList, blankNodePropertyList_TERMINATE, propertyListNotEmpty]
+
+  triplesSameSubject_AFTER_OPEN_BRACKET:
+    - close.bracket: definition.anonymous-blank-node
+      set: propertyListNotEmpty
+    - goto: [propertyList, triplesNode]
+
+  propertyList:
+    - include: propertyListNotEmpty
+    - bail
+
+  propertyListNotEmpty_REQUIRED:
+    - include: propertyListNotEmpty
+
+  propertyListNotEmpty:
+    - switch:
+        - verb: [propertyListNotEmpty_AFTER_OBJECT_LIST, objectList, verb]
+
+  propertyListNotEmpty_AFTER_OBJECT_LIST:
+    - match: ';'
+      scope: punctuation.separator.pair.SYNTAX
+      set: propertyListNotEmpty_AFTER_SEMICOLON
+    - bail
+
+  propertyListNotEmpty_AFTER_SEMICOLON:
+    - switch:
+        - verb: [propertyListNotEmpty_AFTER_OBJECT_LIST, objectList, verb]
+        - propertyListNotEmpty_AFTER_OBJECT_LIST
+    - bail
+
+  verb:
+    - switch:
+        - var
+        - namedNode
+        - a
+
+  object:
+    - goto: graphNode
+
+  triplesSameSubjectPath:
+    - switch:
+        - hollowAnonymousBlankNode: [propertyListPathNotEmpty, hollowAnonymousBlankNode]
+        - anonymousBlankNode: anonymousBlankNode_LATENT_PLP_PLPNE
+        - varOrTerm: [propertyListPathNotEmpty, varOrTerm]
+        - triplesNode: [propertyListPath, triplesNodePath]
+
+  anonymousBlankNode_LATENT_PLP_PLPNE:
+    - open.bracket: definition.blank-node-property-list
+      set: anonymousBlankNode_LATENT_PLP_PLPNE_AFTER_BEGIN
+
+  anonymousBlankNode_LATENT_PLP_PLPNE_AFTER_BEGIN:
+    - close.bracket: definition.anonymous-blank-node.hack
+      set: propertyListPathNotEmpty
+    - goto: [propertyListPath, blankNodePropertyList_TERMINATE, propertyListPathNotEmpty]
+
+  propertyListPath:
+    - switch:
+        - verbPathOrSimple: propertyListPathNotEmpty
+    - bail
+
+  propertyListPathNotEmpty:
+    - goto: [propertyListPathNotEmpty_AFTER_OBJECT_LIST_PATH, objectListPath, verbPathOrSimple]
+
+  propertyListPathNotEmpty_AFTER_OBJECT_LIST_PATH:
+    - match: ';'
+      scope: punctuation.separator.pair.SYNTAX
+      push: propertyListPathNotEmpty_AFTER_SEMICOLON
+    - bail
+
+  propertyListPathNotEmpty_AFTER_SEMICOLON:
+    - switch:
+        - verbPathOrSimple: [objectList, verbPathOrSimple]
+    - bail
+
+  verbPathOrSimple:
+    - switch:
+        - path
+        - var
+
+  objectListPath:
+    - goto: [objectListPath_MORE, objectPath]
+
+  objectListPath_MORE:
+    - match: ','
+      scope: punctuation.separator.object.SYNTAX
+      set: objectListPath
+    - bail
+
+  objectPath:
+    - goto: graphNodePath
+
+  path:
+    - goto: pathAlternative
+
+  pathAlternative:
+    - goto: [pathAlternative_MORE, pathSequence]
+
+  pathAlternative_MORE:
+    - match: '\|'
+      scope: keyword.operator.path.alternative.SYNTAX
+      set: pathAlternative
+    - bail
+
+  pathSequence:
+    - goto: [pathSequence_MORE, pathEltOrInverse]
+
+  pathSequence_MORE:
+    - match: '\/'
+      scope: keyword.operator.path.separator.SYNTAX
+      set: pathSequence
+    - bail
+
+  pathEltOrInverse:
+    - match: '\^'
+      scope: keyword.operator.path.inverse.SYNTAX meta.path.inverse.SYNTAX
+      set: pathElt
+      mask: meta.path.inverse.SYNTAX
+    - goto: pathElt
+
+  pathElt:
+    - goto: [pathMod?, pathPrimary]
+
+  pathMod:
+    - match: '\?(?={{KEYWORD_BOUNDARY}})'
+      scope: keyword.operator.path.quantifier.zero-or-one.SYNTAX
+      pop: true
+    - match: '\*(?={{KEYWORD_BOUNDARY}})'
+      scope: keyword.operator.path.quantifier.zero-or-more.SYNTAX
+      pop: true
+    - match: '\+(?={{KEYWORD_BOUNDARY}})'
+      scope: keyword.operator.path.quantifier.one-or-more.SYNTAX
+      pop: true
+
+  pathPrimary:
+    - match: '!'
+      scope: keyword.operator.path.logical.not.SYNTAX meta.path.negated.SYNTAX
+      set: pathNegatedPropertySet
+      mask: meta.path.negated.SYNTAX
+    - open.paren: section.path-group.sub
+      set: [pathPrimary_GROUP_TERMINATE, path]
+    - include: predicateData
+
+  pathPrimary_GROUP_TERMINATE:
+    - close.paren: section.path-group.sub
+      pop: true
+
+  pathNegatedPropertySet:
+    - open.paren: section.path
+      set: [pathNegatedPropertySet_AFTER_GROUP_BEGIN]
+    - goto: pathOneInPropertySet
+
+  pathNegatedPropertySet_AFTER_GROUP_BEGIN:
+    - close.paren: section.path
+      pop: true
+    - goto: [pathNegatedPropertySet_GROUP_TERMINATE, pathNegatedPropertySet_AFTER_SET, pathOneInPropertySet]
+
+  pathNegatedPropertySet_AFTER_SET:
+    - match: '\|'
+      scope: keyword.operator.path.alternative.SYNTAX
+      set: pathOneInPropertySet
+    - bail
+
+  pathNegatedPropertySet_GROUP_TERMINATE:
+    - close.paren: section.path
+      pop: true
+
+  pathOneInPropertySet:
+    - match: '\^'
+      scope: keyword.operator.path.inverse.SYNTAX
+      set: pathOneInPropertySet_AFTER_INVERSE
+    - goto: pathOneInPropertySet_AFTER_INVERSE
+
+  pathOneInPropertySet_AFTER_INVERSE:
+    - include: predicateData
+
+  triplesNode:
+    - switch:
+        - collection
+        - blankNodePropertyList
+
+  blankNodePropertyList:
+    - open.bracket: definition.blank-node-property-list
+      set: [blankNodePropertyList_TERMINATE, propertyListNotEmpty]
+
+  triplesNodePath:
+    - switch:
+        - collectionPath
+        - blankNodePropertyListPath
+
+  blankNodePropertyListPath:
+    - open.bracket: definition.blank-node-property-list
+      set: [blankNodePropertyList_TERMINATE, propertyListPathNotEmpty]
+
+  collection_AFTER_BEGIN:
+    - goto: [collection_AFTER_GRAPH_NODE, graphNode]
+
+  collection_AFTER_GRAPH_NODE:
+    - close.paren: section.collection
+      pop: true
+    - goto: [collection_AFTER_GRAPH_NODE, graphNode]
+
+  collectionPath:
+    - open.paren: section.collection
+      set: [collectionPath_AFTER_GRAPH_NODE_PATH, graphNodePath]
+
+  collectionPath_AFTER_GRAPH_NODE_PATH:
+    - close.paren: section.collection
+      pop: true
+    - goto: [collectionPath_AFTER_GRAPH_NODE_PATH, graphNodePath]
+
+  graphNode:
+    - switch:
+        - hollowAnonymousBlankNode
+        - anonymousBlankNode: anonymousBlankNode_LATENT
+        - varOrTerm
+        - triplesNode
+
+  graphNodePath:
+    - switch:
+        - hollowAnonymousBlankNode
+        - anonymousBlankNode: anonymousBlankNodePath_LATENT
+        - varOrTerm
+        - triplesNodePath
+
+  varOrTerm:
+    - switch:
+        - var
+        - term: graphTerm
+
+  varOrNamedNode:
+    - switch:
+        - var
+        - namedNode
+
+  var:
+    - lookahead: '[?$]'
+    - match: '((\?){{varName}})'
+      captures:
+        1: variable.other.readwrite.var.question-mark.SYNTAX
+        2: punctuation.definition.variable.var.question-mark.SYNTAX
+      pop: true
+    - match: '((\$){{varName}})'
+      captures:
+        1: variable.other.readwrite.var.dollar-sign.SYNTAX
+        2: punctuation.definition.variable.var.dollar-sign.SYNTAX
+      pop: true
+    - retry
+
+  graphTerm:
+    - word: undef
+      scope: support.constant.undef.SYNTAX
+      pop: true
+    - switch:
+        - namedNode
+        - literal
+        - blankNode
+        - nil
+
+  expression:
+    - goto: conditionalOrExpression
+      mask: meta.expression.SYNTAX
+
+  conditionalOrExpression:
+    - goto: [conditionalOrExpression_MORE, conditionalAndExpression]
+
+  conditionalOrExpression_MORE:
+    - match: '\|\|'
+      scope: keyword.operator.conditional.or.SYNTAX
+      set: conditionalOrExpression
+    - bail
+
+  conditionalAndExpression:
+    - goto: [conditionalAndExpression_MORE, valueLogical]
+
+  conditionalAndExpression_MORE:
+    - match: '&&'
+      scope: keyword.operator.conditional.and.SYNTAX
+      set: conditionalAndExpression
+    - bail
+
+  valueLogical:
+    - goto: relationalExpression
+
+  relationalExpression:
+    - goto: [relationalExpression_AFTER_NUMERIC_EXPRESSION, numericExpression]
+
+  relationalExpression_AFTER_NUMERIC_EXPRESSION:
+    - match: '='
+      scope: keyword.operator.relational.equality.SYNTAX
+      set: numericExpression
+    - match: '!='
+      scope: keyword.operator.relational.non-equality.SYNTAX
+      set: numericExpression
+    - match: '<='
+      scope: keyword.operator.relational.less-than-or-equal-to.SYNTAX
+      set: numericExpression
+    - match: '>='
+      scope: keyword.operator.relational.greater-than-or-equal-to.SYNTAX
+      set: numericExpression
+    - match: '<'
+      scope: keyword.operator.relational.less-than.SYNTAX
+      set: numericExpression
+    - match: '>'
+      scope: keyword.operator.relational.greater-than.SYNTAX
+      set: numericExpression
+    - word: in
+      scope: keyword.operator.word.modifier.relational.in.SYNTAX
+      set: expressionList
+    - word: not
+      scope: keyword.operator.word.modifier.relational.not.SYNTAX
+      set: relationalExpression_AFTER_NOT
+    - bail
+
+  relationalExpression_AFTER_NOT:
+    - word: in
+      scope: keyword.operator.word.modifier.relational.in.SYNTAX
+      set: expressionList
+
+  numericExpression:
+    - goto: additiveExpression
+
+  additiveExpression:
+    - goto: [additiveExpression_MORE, multiplicativeExpression]
+
+  additiveExpression_MORE:
+    - match: '{{numericLiteralPositive_LOOKAHEAD}}|{{numericLiteralNegative_LOOKAHEAD}}'
+      push: [additiveExpression_AFTER_SIGNED_NUMERIC_LITERAL, numericLiteral]
+    - match: '\+'
+      scope: keyword.operator.arithmetic.addition.SYNTAX
+      set: additiveExpression
+    - match: '\-'
+      scope: keyword.operator.arithmetic.subtraction.SYNTAX
+      set: additiveExpression
+    - bail
+
+  additiveExpression_AFTER_SIGNED_NUMERIC_LITERAL:
+    - match: '\*'
+      scope: keyword.operator.arithmetic.multiplication.SYNTAX
+      push: unaryExpression
+    - match: '/'
+      scope: keyword.operator.arithmetic.division.SYNTAX
+      push: unaryExpression
+    - bail
+
+  multiplicativeExpression:
+    - goto: [multiplicativeExpression_MORE, unaryExpression]
+
+  multiplicativeExpression_MORE:
+    - match: '\*'
+      scope: keyword.operator.arithmetic.multiplication.SYNTAX
+      set: multiplicativeExpression
+    - match: '/'
+      scope: keyword.operator.arithmetic.division.SYNTAX
+      set: multiplicativeExpression
+    - bail
+
+  unaryExpression:
+    - match: '!'
+      scope: keyword.operator.logical.not.SYNTAX
+      set: primaryExpression
+    - match: '\+'
+      scope: keyword.operator.arithmetic.sign.positive.SYNTAX
+      set: primaryExpression
+    - match: '-'
+      scope: keyword.operator.arithmetic.sign.negative.SYNTAX
+      set: primaryExpression
+    - goto: primaryExpression
+
+  primaryExpression:
+    - switch:
+        - functionCall
+        - var
+        - brackettedExpression
+    - include: builtInCall
+    - include: literal
+    - goto: namedNode
+      mask: meta.term.role.expression.SYNTAX
+
+  brackettedExpression:
+    - open.paren: definition.expression
+      set: [brackettedExpression_TERMINATE, expression]
+
+  brackettedExpression_TERMINATE:
+    - meta_content_scope: meta.group.bracketted-expression.SYNTAX
+    - close.paren: definition.expression
+      pop: true
+
+  builtInCall:
+    - words:
+        - str
+        - lang
+        - datatype
+        - iri
+        - uri
+        - rand
+        - abs
+        - ceil
+        - floor
+        - round
+        - strlen
+        - ucase
+        - lcase
+        - encode_for_uri
+        - year
+        - month
+        - day
+        - hours
+        - minutes
+        - seconds
+        - timezone
+        - tz
+        - md5
+        - sha1
+        - sha256
+        - sha384
+        - sha512
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - builtInCall_TERMINATE
+        - expression
+        - builtInCallArguments
+    - words.camel:
+        - langMatches
+        - contains
+        - strStarts
+        - strBefore
+        - strAfter
+        - strLang
+        - strDt
+        - sameTerm
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - builtInCall_TERMINATE
+        - expression
+        - builtInCall_AFTER_ARGUMENT
+        - expression
+        - builtInCallArguments
+    - word: bound
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - builtInCall_TERMINATE
+        - var
+        - builtInCallArguments
+    - word: bnode
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - builtInCall_TERMINATE
+        - optionalArgumentExpression
+        - builtInCallArguments
+    - words:
+        - rand
+        - now
+        - uuid
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - builtInCall_TERMINATE
+        - builtInCallArguments
+    - words:
+        - concat
+        - coalesce
+      scope: support.function.built-in.WORD.SYNTAX
+      set: expressionList
+    - words.camel:
+        - isIri
+        - isUri
+        - isBlank
+        - isLiteral
+        - isNumeric
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - builtInCall_TERMINATE
+        - expression
+        - builtInCallArguments
+    - words.camel: struuid
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - builtInCall_TERMINATE
+        - builtInCallArguments
+    - word: if
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - builtInCall_TERMINATE
+        - expression
+        - builtInCall_AFTER_ARGUMENT
+        - expression
+        - builtInCall_AFTER_ARGUMENT
+        - expression
+        - builtInCallArguments
+    - words:
+        - regex
+        - substr
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - builtInCall_TERMINATE
+        - builtInCall_OPTIONAL_ARGUMENT
+        - expression
+        - builtInCall_AFTER_ARGUMENT
+        - expression
+        - builtInCallArguments
+    - word: replace
+      scope: support.function.built-in.WORD.SYNTAX
+      set:
+        - builtInCall_TERMINATE
+        - builtInCall_OPTIONAL_ARGUMENT
+        - expression
+        - builtInCall_AFTER_ARGUMENT
+        - expression
+        - builtInCall_AFTER_ARGUMENT
+        - expression
+        - builtInCallArguments
+    - word: exists
+      scope: support.function.built-in.WORD.SYNTAX
+      set: groupGraphPattern
+    - word: not
+      scope: support.function.built-in.WORD.SYNTAX
+      set: notExistsFunc_AFTER_NOT
+    - include: aggregateFunction
+
+  builtInCallArguments:
+    - open.paren: definition.arguments
+      pop: true
+
+  builtInCall_OPTIONAL_ARGUMENT:
+    - match: ','
+      scope: punctuation.separator.argument.SYNTAX
+      set: expression
+    - bail
+
+  builtInCall_AFTER_ARGUMENT:
+    - match: ','
+      scope: punctuation.separator.argument.SYNTAX
+      pop: true
+
+  builtInCall_TERMINATE:
+    - meta_content_scope: meta.invocation.built-in.SYNTAX
+    - close.paren: definition.arguments
+      pop: true
+
+  optionalArgumentExpression:
+    - close.paren: definition.arguments
+      pop: true
+    - goto: expression
+
+
+  notExistsFunc_AFTER_NOT:
+    - word: exists
+      scope: support.function.built-in.WORD.SYNTAX
+      set: groupGraphPattern
+
+  aggregateFunction:
+    - words:
+        - sum
+        - min
+        - max
+        - avg
+        - sample
+      scope: support.function.built-in.aggregate.SYNTAX
+      set:
+        - aggregateFunction_TERMINATE
+        - expression
+        - aggregateFunctionArguments
+    - word: count
+      scope: support.function.built-in.aggregate.SYNTAX
+      set:
+        - aggregateFunction_TERMINATE
+        - countExpression
+        - aggregateFunctionArguments
+    - word: group_concat
+      scope: support.function.built-in.aggregate.SYNTAX
+      set:
+        - aggregateFunction_TERMINATE
+        - groupConcatOption
+        - expression
+        - aggregateFunctionArguments
+
+  aggregateFunction_TERMINATE:
+    - meta_content_scope: meta.invocation.function-call.aggregate.SYNTAX
+    - goto: builtInCall_TERMINATE
+
+  aggregateFunctionArguments:
+    - open.paren: definition.arguments
+      set: aggregateFunctionArguments_AFTER_BEGIN
+
+  aggregateFunctionArguments_AFTER_BEGIN:
+    - word: distinct
+      scope: keyword.operator.word.modifier.distinct.function-call.SYNTAX
+      pop: true
+    - bail
+
+  countExpression:
+    - match: '\*'
+      scope: keyword.operator.star.count.SYNTAX
+      pop: true
+    - include: expression
+
+  groupConcatOption:
+    - match: ';'
+      scope: punctuation.separator.group-concat.SYNTAX
+      set: groupConcatOption_AFTER_SEMICOLON
+    - bail
+
+  groupConcatOption_AFTER_SEMICOLON:
+    - word: separator
+      type: modifier
+      set: groupConcatOption_AFTER_SEPARATOR
+
+  groupConcatOption_AFTER_SEPARATOR:
+    - match: '='
+      scope: keyword.operator.assignment.group-concat.SYNTAX
+      set: stringLiteral
+
+  blankNode:
+    - switch:
+        - labeledBlankNode
+        - hollowAnonymousBlankNode
+
+  integer:
+    - match: '[0-9]+'
+      scope: constant.numeric.integer.ttl
+      pop: true
+
+  nil:
+    - open.paren: section.collection
+      set: nil_AFTER_BEGIN
+
+  nil_AFTER_BEGIN:
+    - close.paren: section.collection
+      pop: true
+    - bail

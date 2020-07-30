@@ -2,8 +2,6 @@
 
 Edit and run [SPARQL-Generate](https://ci.mines-stetienne.fr/sparql-generate/) projects directly in Sublime text!
 
-
-
 ### Install:
 
 To use SPARQL-Generate with Sublime Text, follow these steps:
@@ -55,12 +53,10 @@ The playground contains a progressive documentation of [SPARQL-Generate](https:/
 
 An html documentation of the package is available on the [SPARQL-Generate website](https://ci.mines-stetienne.fr/sparql-generate/sublime.html). 
 
-
-
 #### Developed by
 
-
 Maxime Lefrançois
+Omar Qawasmeh
 
 MINES Saint-Étienne, FR
 

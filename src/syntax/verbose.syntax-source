@@ -1,0 +1,48 @@
+%YAML 1.2
+---
+extends: human-readable.syntax-source
+
+contexts:
+  prototype:
+    - include: whitespace
+    - include: comment
+
+  subject:
+    - switch:
+        - iriRef
+        - labeledBlankNode
+      mask: meta.term.role.subject.SYNTAX
+    - retry
+
+  predicate:
+    - switch:
+        - iriRef
+      mask: meta.term.role.predicate.SYNTAX
+
+  object:
+    - switch:
+        - iriRef
+        - labeledBlankNode
+        - stringLiteral: rdfLiteral
+      mask: meta.term.role.object.SYNTAX
+    - retry
+
+  stringLiteral:
+    - open.dirk: literal.double.long
+      set: stringLiteral_AFTER_QUOTE
+
+  stringLiteral_AFTER_QUOTE:
+    - match: '[^"\\\r\n]+'
+      scope: string.quoted.double.literal.long.SYNTAX
+    - close.dirk: literal.double.long
+      pop: true
+    - match: '{{ECHAR}}'
+      scope: string.quoted.double.literal.long.SYNTAX constant.character.escape.literal.escape.long.SYNTAX
+    - match: '{{UCHAR}}'
+      scope: string.quoted.double.literal.long.SYNTAX constant.character.escape.literal.unicode.long.SYNTAX
+
+  datatype:
+    - meta_include_prototype: false
+    - switch:
+        - iriRef
+      mask: meta.term.role.datatype.SYNTAX
