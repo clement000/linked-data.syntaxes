@@ -7,4 +7,13 @@
         "keys": ["shift+super+o", "shift+super+o"],
         "command": "open_file", "args": { "file": "$file_path/sparql-generate-conf.json" },
     },
+    {
+        "keys": ["ctrl+k"],
+        "command": "super_navigate"
+    },
+    {
+        "keys": ["ctrl+shift+k"],
+        "command": "super_navigate",
+        "args": { "allTabs": true }
+    }
 ]
