@@ -56,12 +56,18 @@ An html documentation of the package is available on the [SPARQL-Generate websit
 #### Developed by
 
 Maxime Lefrançois
+
 MINES Saint-Étienne, FR
+
 http://maxime-lefrancois.info/
 
+
 Omar Qawasmeh
+
 MINES Saint-Étienne, FR
+
 https://perso.univ-st-etienne.fr/alo09685/
+
 
 
 As an extension of the excellent [Sublime Text `LinkedData` package](https://packagecontrol.io/packages/LinkedData) developed by:
