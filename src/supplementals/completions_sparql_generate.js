@@ -6,13 +6,12 @@ const completions = (s_type, h_prefixes) => JSON.stringify({
 		{
 			trigger: `${s_namespace}:`,
 			contents: omar(s_namespace, p_iri),//`${s_namespace}: <${p_iri}>${'at' === s_type? ' .': ''}\n`,
-			//				faldo	 : <http://biohackathon.org/resource/faldo#>
 		},
 	], []),
 }, null, '\t');
 
 const omar= (s_namespace, p_iri) => JSON.stringify({
-	
+	scope:`storage.type.prefix.sparql.rqg`,
 	completions: 
 		{
 			navigation: `meta.prologue.rqg`,
