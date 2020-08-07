@@ -192,6 +192,17 @@ module.exports = {
 						`,
 					}),
 
+					'prefix-declarations-sparqlGenerate.:declaration_type.sublime-completions': h => ({
+						deps: [
+							'src/supplementals/completions_sparql_generate.js',
+							'build/context.jsonld',
+						],
+
+						run: /* syntax: bash */ `
+							node $1 '${h.declaration_type}' < $2 > $@
+						`,
+					}),
+
 					// ':color_scheme.sublime-color-scheme': h => ({
 					// 	deps: [
 					// 		'src/main/color-scheme.js',

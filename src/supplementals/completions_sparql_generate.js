@@ -1,14 +1,23 @@
 
 const completions = (s_type, h_prefixes) => JSON.stringify({
-	scope: `meta.prefix-declaration.${s_type}`,
-//scope:`meta.clause.dataset.rqg`, scope for sparql-generate
+	scope:`meta.clause.dataset.rqg`,
 	completions: Object.entries(h_prefixes).reduce((a_completions, [s_namespace, p_iri]) => [
 		...a_completions,
 		{
 			trigger: `${s_namespace}:`,
-			contents: `${s_namespace}: <${p_iri}>${'at' === s_type? ' .': ''}\n`,
+			contents: omar(s_namespace, p_iri),//`${s_namespace}: <${p_iri}>${'at' === s_type? ' .': ''}\n`,
+			//				faldo	 : <http://biohackathon.org/resource/faldo#>
 		},
 	], []),
+}, null, '\t');
+
+const omar= (s_namespace, p_iri) => JSON.stringify({
+	
+	completions: 
+		{
+			navigation: `meta.prologue.rqg`,
+			contents: p_iri,//`${s_namespace}: <${p_iri}>${'at' === s_type? ' .': ''}\n`,
+		},
 }, null, '\t');
 
 // consume prefix context from stdin

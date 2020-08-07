@@ -57,14 +57,14 @@ An html documentation of the package is available on the [SPARQL-Generate websit
 
 Maxime Lefrançois
 
-MINES Saint-Étienne, FR
+MINES Saint-Étienne, France
 
 http://maxime-lefrancois.info/
 
 
 Omar Qawasmeh
 
-MINES Saint-Étienne, FR
+MINES Saint-Étienne, France
 
 https://perso.univ-st-etienne.fr/alo09685/
 

@@ -83,8 +83,12 @@ contexts:
 
   #-----------newly added contexts
 
+  baseDeclaration:
+    - include: baseDeclarationSparql
+
   prefixDeclaration:
     - include: prefixDeclarationSparql
+    
     
   varOrTerm:
     - switch:
@@ -139,7 +143,29 @@ contexts:
 
   query:
     - meta_include_prototype: false
-    - goto: [unit_AFTER_PROLOGUE, prologue]
+    - match: (#(\s*)(@unit)(\s*))
+      captures:
+        '1': comment.line.rqg
+        '2': meta.whitespace.rqg
+        '3': meta.directive.prologue.rqg
+        '4': meta.whitespace.rqg
+      set:
+        - unit_AFTER_PROLOGUE
+        - line_comment
+    - match: '{{query_LOOKAHEAD}}'
+      set:
+        - valuesClause
+        - query_AFTER_PROLOGUE
+    - match: '{{functionQuery_LOOKAHEAD}}'
+      set:
+        - function_AFTER_PROLOGUE
+        
+    - match: '{{baseDeclaration_LOOKAHEAD}}'
+      push:
+        - baseDeclaration
+    - match: '{{prefixDeclaration_LOOKAHEAD}}'
+      push:
+        - prefixDeclaration 
 
   unit_AFTER_PROLOGUE:
     - match: '(#(\s*)(@unit)(\s*))'
