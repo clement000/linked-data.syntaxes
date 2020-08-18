@@ -15,5 +15,9 @@
         "keys": ["ctrl+shift+k"],
         "command": "super_navigate",
         "args": { "allTabs": true }
+    },
+    {
+        "keys": ["ctrl+shift+p"],
+        "command": "sparql_generate_autocomplete"
     }
 ]

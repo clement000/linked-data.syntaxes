@@ -53,6 +53,12 @@
                         "command": "super_navigate",
                         "args": { "allTabs": true }
                     }
+                    ,
+                    {
+                        "caption": "Auto complete for prefixes",
+                        "command": "sparql_generate_autocomplete"
+                        
+                    }
                 ]
             }
         ]
