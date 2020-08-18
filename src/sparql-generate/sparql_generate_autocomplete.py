@@ -12,7 +12,7 @@ https://github.com/predragnikolic/sublime-python-import-helper
 import os
 import re
 import urllib.request, json 
-from sublime import HIDE_ON_MOUSE_MOVE_AWAY, Region#, load_settings
+from sublime import HIDE_ON_MOUSE_MOVE_AWAY, Region
 from sublime_plugin import TextCommand
 
 
@@ -20,9 +20,6 @@ class sparql_generate_autocomplete(TextCommand):
     def run(self, edit, symbol_file_path=None, just_import=False):
         self.edit = edit
         self.word = self.get_current_word()
-        #settings = load_settings("sparql-generate-auto-complete.sublime-settings")
-        #self.settings = settings
-        #should_import_sublime_modules = settings.get('sublime_modules_import')
         self.get_prefix_from_prefixCC()
 
 
@@ -79,15 +76,10 @@ class sparql_generate_autocomplete(TextCommand):
                 break
         is_already_added = singleline_match or multiline_match
         if is_already_added:
-            self.alert('Already added')
+            self.alert('prefix already added')
 
         return is_already_added    
 
     def insert_on_page(self, text, point=0):
         self.view.insert(self.edit, point, text)
-
-        #command = self.settings.get('command_to_run_after_import')
-        #if command:
-         #   self.view.run_command(command)
-
         self.alert('Prefix '+ self.key +' is added') 
