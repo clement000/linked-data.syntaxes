@@ -35,7 +35,7 @@ class sparql_generate_autocomplete(TextCommand):
             self.insert_prefix_statement_from_prefixCC()          
             print(self.word,data)
         except urllib.error.URLError as e:
-          self.alert("Bad request\nPlease insert the prefix manually" )  
+          self.alert("No prefix is added (please insert it manually)")  
           print(e.reason)
 
     #get current word at the cursor and convert it to String      
