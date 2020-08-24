@@ -19,7 +19,9 @@ class sparql_generate_autocomplete(TextCommand):
     def run(self, edit, symbol_file_path=None, just_import=False):
         self.edit = edit
         self.word = self.get_current_word()
-        self.get_prefix_from_prefixCC()
+        fileExtension = self.view.file_name()
+        if fileExtension.endswith('.rqg'):
+            self.get_prefix_from_prefixCC()
         
 
 
