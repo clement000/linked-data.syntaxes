@@ -33,14 +33,19 @@ class sparql_generate_autocomplete(TextCommand):
                 self.key=key
                 self.value=value
             self.insert_prefix_statement_from_prefixCC()          
-           # print(self.word,data)
+           # print("Retrieved word is "+self.word,data)
         except urllib.error.URLError as e:
-          self.alert("No prefix is added (please insert it manually)")  
-        #  print(e.reason)
+          self.alert('❌ Prefix '+ self.word + '  is not registered on prefix.cc')  
+       #   print(e.reason)
 
     #get current word at the cursor and convert it to String      
     def get_current_word(self) -> str:
         view = self.view
+        scope = view.scope_name(view.sel()[0].begin())
+        if "literal" in scope:
+            #self.alert('Prefixes can not be generated inside this scope')
+            return
+
         return view.substr(view.word(view.sel()[0]))
 
     def alert(self, message) -> None:
@@ -76,7 +81,7 @@ class sparql_generate_autocomplete(TextCommand):
                 break
         is_already_added = singleline_match or multiline_match
         if is_already_added:
-            self.alert('❌ Prefix already exist')
+            self.alert('❌ Prefix '+ self.word + ' already added')
 
         return is_already_added    
 

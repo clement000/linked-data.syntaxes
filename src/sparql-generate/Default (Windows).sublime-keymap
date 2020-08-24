@@ -17,7 +17,7 @@
         "args": { "allTabs": true }
     },
     {
-        "keys": ["ctrl+shift+i"],
+        "keys": ["ctrl+space"],
         "command": "sparql_generate_autocomplete"
     }
 ]
