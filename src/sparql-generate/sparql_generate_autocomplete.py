@@ -15,12 +15,12 @@ import urllib.request, json
 from sublime import HIDE_ON_MOUSE_MOVE_AWAY, Region
 from sublime_plugin import TextCommand
 
-
 class sparql_generate_autocomplete(TextCommand):
     def run(self, edit, symbol_file_path=None, just_import=False):
         self.edit = edit
         self.word = self.get_current_word()
         self.get_prefix_from_prefixCC()
+        
 
 
     
@@ -33,10 +33,10 @@ class sparql_generate_autocomplete(TextCommand):
                 self.key=key
                 self.value=value
             self.insert_prefix_statement_from_prefixCC()          
-            print(self.word,data)
+           # print(self.word,data)
         except urllib.error.URLError as e:
           self.alert("No prefix is added (please insert it manually)")  
-          print(e.reason)
+        #  print(e.reason)
 
     #get current word at the cursor and convert it to String      
     def get_current_word(self) -> str:
@@ -76,10 +76,10 @@ class sparql_generate_autocomplete(TextCommand):
                 break
         is_already_added = singleline_match or multiline_match
         if is_already_added:
-            self.alert('prefix already added')
+            self.alert('❌ Prefix already exist')
 
         return is_already_added    
 
     def insert_on_page(self, text, point=0):
         self.view.insert(self.edit, point, text)
-        self.alert('Prefix '+ self.key +' is added') 
+        self.alert('✔ Prefix '+ self.key +' added successfully') 
