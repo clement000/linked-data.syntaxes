@@ -62,15 +62,15 @@ class sparql_generate_autocomplete(TextCommand):
 
     #generate the prefix statment    
     def generate_prefix_statement(self, module_name='', just_import=False) -> str:
-        return 'prefix {}\n'.format(self.key+": <"+self.value+">")
+        return 'PREFIX {}\n'.format(self.key+": <"+self.value+">")
         
 
 
     def is_already_added(self) -> bool:
         singleline_match = \
-            not self.view.find(r'prefix.*\b{}\b'.format(self.word), 0).empty()
+            not self.view.find(r'prefix|PREFIX.*\b{}\b'.format(self.word), 0).empty()
 
-        multiline_matches = self.view.find_all(r'\bprefix\b\s*\((\w+)?,?')
+        multiline_matches = self.view.find_all(r'\bprefix|PREFIX\b\s*\((\w+)?,?')
         multiline_match = False
         for start_region in multiline_matches:
             end_region = self.view.find(r'\)\s*$', start_region.end())
