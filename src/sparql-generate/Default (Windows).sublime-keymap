@@ -19,5 +19,9 @@
     {
         "keys": ["ctrl+space"],
         "command": "sparql_generate_autocomplete"
+    },
+    {
+        "keys": ["ctrl+shift+t"],
+        "command": "test"
     }
 ]
